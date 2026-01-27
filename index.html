@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>声度星主持 - 数据复盘仪表盘</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+    <!-- Day.js -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .chart-container { min-height: 300px; width: 100%; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+    <div id="app" v-cloak class="min-h-screen flex flex-col">
+        <!-- Top Navigation / Filter Bar -->
+        <header class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm px-4 py-3 md:px-8">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight">声度星主持数据仪表盘</h1>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <!-- Tab Switcher Integrated in Header -->
+                    <div class="flex bg-slate-100 p-1 rounded-lg mr-2">
+                        <button @click="currentTab = 'experience'" 
+                                :class="['px-4 py-1.5 rounded-md transition-all text-xs font-medium', currentTab === 'experience' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
+                            体验课数据
+                        </button>
+                        <button @click="currentTab = 'enrollment'" 
+                                :class="['px-4 py-1.5 rounded-md transition-all text-xs font-medium', currentTab === 'enrollment' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
+                            报课明细
+                        </button>
+                    </div>
+                    
+                    <a href="data-entry.html" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        工作数据
+                    </a>
+                    <a href="performance.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        绩效考核
+                    </a>
+                    <a href="salary-calculation.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        工资计算
+                    </a>
+                    <button @click="showImport = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        导入数据
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8">
+            <!-- Dashboard Content -->
+            <div v-if="currentTab === 'experience'" class="space-y-8 animate-in fade-in duration-500">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative group">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="text-sm text-slate-500">本期体验学员数</p>
+                            <!-- Independent Filter Icon -->
+                            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <input v-if="chartFilters.expKpi.dateRange === 'thisMonth'" 
+                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                       class="text-[10px] bg-slate-50 border-none rounded py-0 px-1 focus:ring-0 cursor-pointer">
+                                <select v-model="chartFilters.expKpi.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-0 px-1 focus:ring-0">
+                                    <option value="thisMonth">本月</option>
+                                    <option value="thisYear">本年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_students}}</h3>
+                        <div class="mt-2 text-xs text-green-600 flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"></path></svg>
+                            较上期 +12%
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">累计体验学员数</p>
+                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_total}}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">体验课转化率</p>
+                        <h3 class="text-3xl font-bold text-blue-600">{{kpis.exp_conv_rate}}%</h3>
+                        <div class="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-600" :style="{width: kpis.exp_conv_rate + '%'}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">年级分布</h4>
+                            <div class="flex gap-2">
+                                <select v-model="chartFilters.grade.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="all">全部校区</option>
+                                    <option v-for="c in campusList" :value="c">{{c}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="gradeChart" class="chart-container"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">学员来源渠道</h4>
+                            <div class="flex items-center gap-2">
+                                <input v-if="chartFilters.source.dateRange === 'thisMonth'" 
+                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
+                                <select v-model="chartFilters.source.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="thisMonth">本月</option>
+                                    <option value="thisYear">本年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="sourceChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">性别比例</h4>
+                            <select v-model="chartFilters.gender.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="all">全部</option>
+                                <option v-for="c in campusList" :value="c">{{c}}</option>
+                            </select>
+                        </div>
+                        <div id="genderChart" class="chart-container"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">体验课转化漏斗</h4>
+                            <div class="flex gap-2">
+                                <select v-model="chartFilters.funnel.teacher" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="all">全部老师</option>
+                                    <option v-for="t in teacherList" :value="t">{{t}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="funnelChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- Teacher Stats -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold">体验课老师授课统计</h4>
+                        <div class="flex items-center gap-2">
+                            <input v-if="chartFilters.teacherExp.dateRange === 'thisMonth'" 
+                                   type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                   class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
+                            <select v-model="chartFilters.teacherExp.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="thisMonth">本月</option>
+                                <option value="thisYear">本年</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="teacherExpChart" class="chart-container" style="height: 400px;"></div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'enrollment'" class="space-y-8 animate-in fade-in duration-500">
+                <!-- KPI Cards Enrollment -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">实收金额</p>
+                        <h3 class="text-2xl font-bold text-slate-900">¥{{kpis.enr_revenue.toLocaleString()}}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">报课总额</p>
+                        <h3 class="text-2xl font-bold text-slate-900">¥{{kpis.enr_total_amount.toLocaleString()}}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">新签合同</p>
+                        <h3 class="text-2xl font-bold text-green-600">{{kpis.enr_new_contracts}}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">续费合同</p>
+                        <h3 class="text-2xl font-bold text-blue-600">{{kpis.enr_renew_contracts}}</h3>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1: Trend & Type -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">实收金额趋势 (近12个月)</h4>
+                            <select v-model="chartFilters.revenueTrend.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="all">全部校区</option>
+                                <option v-for="c in campusList" :value="c">{{c}}</option>
+                            </select>
+                        </div>
+                        <div id="revenueTrendChart" class="chart-container"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">报课属性占比</h4>
+                            <div class="flex items-center gap-2">
+                                <input v-if="chartFilters.enrType.dateRange === 'thisMonth'" 
+                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
+                                <select v-model="chartFilters.enrType.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="thisMonth">本月</option>
+                                    <option value="thisYear">本年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="enrTypeChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- New Row: Performance Ranking & AOV -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">业绩排行</h4>
+                            <div class="flex items-center gap-2">
+                                <input v-if="chartFilters.ranking.dateRange === 'thisMonth'" 
+                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
+                                <select v-model="chartFilters.ranking.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="thisMonth">本月</option>
+                                    <option value="thisYear">本年</option>
+                                </select>
+                                <select v-model="chartFilters.ranking.type" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                    <option value="campus">按校区</option>
+                                    <option value="teacher">按老师</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="perfRankingChart" class="chart-container"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">客单价 (AOV) 分析</h4>
+                            <select v-model="chartFilters.aov.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="all">全部校区</option>
+                                <option v-for="c in campusList" :value="c">{{c}}</option>
+                            </select>
+                        </div>
+                        <div id="aovTrendChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- New Row: Course Consumption -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold">消课数据分析 (消课总额、课时及课消率)</h4>
+                        <div class="flex gap-2">
+                            <select v-model="chartFilters.consumption.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="all">全部校区</option>
+                                <option v-for="c in campusList" :value="c">{{c}}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="consumptionChart" class="chart-container" style="height: 400px;"></div>
+                </div>
+
+                <!-- Campus Performance -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold">校区业绩对比</h4>
+                        <div class="flex items-center gap-2">
+                            <input v-if="chartFilters.campusPerf.dateRange === 'thisMonth'" 
+                                   type="month" v-model="currentMonth" min="2025-01" max="2026-12"
+                                   class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
+                            <select v-model="chartFilters.campusPerf.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="thisMonth">本月</option>
+                                <option value="thisYear">本年</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="campusPerfChart" class="chart-container" style="height: 400px;"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Import Modal -->
+        <div v-if="showImport" v-cloak style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-lg font-bold">导入业务数据</h3>
+                    <button @click="showImport = false" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all">
+                            <svg class="w-10 h-10 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 00-4-4H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            <span class="text-sm font-medium">上传 Excel/CSV</span>
+                            <span class="text-xs text-slate-400 mt-1">支持 .xlsx, .csv 格式</span>
+                            <input type="file" class="hidden" accept=".xlsx,.csv" @change="handleExcelUpload">
+                        </label>
+                        <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all">
+                            <svg class="w-10 h-10 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                            <span class="text-sm font-medium">截图 OCR 识别</span>
+                            <span class="text-xs text-slate-400 mt-1">上传截图自动解析数据</span>
+                            <input type="file" class="hidden" accept="image/*" @change="handleImageUpload">
+                        </label>
+                    </div>
+                    
+                    <div v-if="importing" class="flex items-center justify-center py-4">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span class="ml-3 text-sm text-slate-600">正在处理数据... {{importProgress}}%</span>
+                    </div>
+
+                    <div v-if="parsedData.length > 0" class="mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-bold text-blue-600">数据预校验 & 手动修正</h4>
+                            <div class="flex gap-2">
+                                <button @click="addEmptyRow" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-slate-600">+ 新增行</button>
+                                <button @click="clearParsedData" class="text-xs text-red-500 hover:text-red-700">全部清除</button>
+                            </div>
+                        </div>
+                        <div class="max-h-64 overflow-auto border border-slate-200 rounded-lg text-xs bg-slate-50">
+                            <table class="w-full border-collapse">
+                                <thead class="bg-slate-100 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left border-b border-slate-200 w-8">#</th>
+                                        <th v-for="key in Object.keys(parsedData[0])" :key="key" class="px-2 py-2 text-left border-b border-slate-200 min-w-[80px]">{{key}}</th>
+                                        <th class="px-2 py-2 text-center border-b border-slate-200 w-10">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(row, idx) in parsedData" :key="idx" class="border-b border-slate-200 bg-white hover:bg-blue-50/50">
+                                        <td class="px-2 py-2 text-slate-400 text-[10px]">{{idx + 1}}</td>
+                                        <td v-for="(val, key) in row" :key="key" class="px-1 py-1">
+                                            <input v-model="parsedData[idx][key]" class="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-400 rounded px-1 py-1 text-xs" placeholder="-">
+                                        </td>
+                                        <td class="px-2 py-2 text-center">
+                                            <button @click="removeRow(idx)" class="text-slate-300 hover:text-red-500 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3 p-2 bg-blue-50 rounded-lg flex items-start gap-2">
+                            <svg class="w-4 h-4 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p class="text-[10px] text-blue-600 leading-relaxed">
+                                <strong>提示：</strong> OCR 识别受限于图片清晰度，可能出现同音字或金额错误。请在点击“确认导入”前核对并修正。支持直接在表格内修改，修改后的数据将实时同步至仪表盘。
+                            </p>
+                        </div>
+                        <div class="mt-4 flex flex-col gap-3">
+                            <div v-if="saveStatus" :class="['text-center py-2 rounded-lg text-sm font-medium transition-all', saveStatus === 'saved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600']">
+                                {{ saveStatus === 'saved' ? '✓ 数据已导入' : '✕ 处理失败，请重试' }}
+                            </div>
+                            <button @click="confirmImport" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2">
+                                <span>确认导入并更新看板</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="bg-white border-t border-slate-200 py-6 px-4 text-center text-slate-400 text-xs">
+            &copy; 2026 声度星主持 少儿口才培训机构 | 内部数据复盘专用
+        </footer>
+    </div>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
