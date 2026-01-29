@@ -4,7 +4,14 @@ createApp({
     setup() {
         const currentTab = ref('experience');
         const enrSearch = ref('');
+        const enrTableExpanded = ref(false); // 报课明细表格折叠状态，默认折叠
+        const expSearch = ref('');
+        const expTableExpanded = ref(false); // 体验课明细表格折叠状态，默认折叠
+        const conSearch = ref('');
+        const conTableExpanded = ref(false); // 课消明细表格折叠状态，默认折叠
         const enrollmentDetails = ref(window.enrollmentDetails2025 || []);
+        const experienceDetails = ref(window.experienceDetails2025 || []);
+        const consumptionDetails = ref(window.consumptionData2025 || []);
 
         // Global Date Filter
         const globalFilter = reactive({
@@ -18,21 +25,100 @@ createApp({
             
             // Filter by global date
             if (globalFilter.type === 'year') {
-                data = data.filter(item => item.报课时间.startsWith(globalFilter.year));
+                data = data.filter(item => item.报课时间 && item.报课时间.startsWith(globalFilter.year));
             } else {
-                data = data.filter(item => item.报课时间.startsWith(globalFilter.month));
+                data = data.filter(item => item.报课时间 && item.报课时间.startsWith(globalFilter.month));
             }
+            return data;
+        });
 
+        const searchedEnrollmentDetails = computed(() => {
+            let data = filteredEnrollmentDetails.value;
             // Search filter
             if (!enrSearch.value) return data;
             const search = enrSearch.value.toLowerCase();
             return data.filter(item => 
-                item.学员姓名.toLowerCase().includes(search) || 
-                item.业绩归属人.toLowerCase().includes(search) ||
-                item.报课属性.toLowerCase().includes(search) ||
-                item.所在校区.toLowerCase().includes(search)
+                (item.学员姓名 && item.学员姓名.toLowerCase().includes(search)) || 
+                (item.业绩归属人 && item.业绩归属人.toLowerCase().includes(search)) ||
+                (item.报课属性 && item.报课属性.toLowerCase().includes(search)) ||
+                (item.所在校区 && item.所在校区.toLowerCase().includes(search))
             );
         });
+
+        const filteredExperienceDetails = computed(() => {
+            let data = experienceDetails.value;
+            
+            // Filter by global date
+            if (globalFilter.type === 'year') {
+                data = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.year));
+            } else {
+                data = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.month));
+            }
+            return data;
+        });
+
+        const searchedExperienceDetails = computed(() => {
+            let data = filteredExperienceDetails.value;
+            // Search filter
+            if (!expSearch.value) return data;
+            const search = expSearch.value.toLowerCase();
+            return data.filter(item => 
+                (item.学员姓名 && item.学员姓名.toLowerCase().includes(search)) || 
+                (item.邀约老师 && item.邀约老师.toLowerCase().includes(search)) ||
+                (item.体验课老师 && item.体验课老师.toLowerCase().includes(search)) || 
+                (item.所在校区 && item.所在校区.toLowerCase().includes(search)) ||
+                (item.状态 && item.状态.toLowerCase().includes(search))
+            );
+        });
+
+        const filteredConsumptionDetails = computed(() => {
+            let data = consumptionDetails.value.filter(item => item.姓名 !== '汇总');
+            
+            // Filter by global date
+            if (globalFilter.type === 'year') {
+                data = data.filter(item => item.月份 && item.月份.startsWith(globalFilter.year));
+            } else {
+                data = data.filter(item => item.月份 === globalFilter.month);
+            }
+
+            // Filter by campus
+            const selCampus = chartFilters.consumption.campus;
+            if (selCampus !== 'all') {
+                data = data.filter(item => item.校区 === selCampus);
+            }
+            
+            return data;
+        });
+
+        const searchedConsumptionDetails = computed(() => {
+            let data = filteredConsumptionDetails.value;
+            if (!conSearch.value) return data;
+            const search = conSearch.value.toLowerCase();
+            return data.filter(item => 
+                (item.姓名 && item.姓名.toLowerCase().includes(search)) ||
+                (item.校区 && item.校区.toLowerCase().includes(search))
+            );
+        });
+
+        const groupedConsumptionDetails = computed(() => {
+            const data = searchedConsumptionDetails.value;
+            if (globalFilter.type === 'month') {
+                return [{ month: globalFilter.month, items: data }];
+            }
+            
+            // Group by month for year view
+            const groups = {};
+            data.forEach(item => {
+                if (!groups[item.月份]) groups[item.月份] = [];
+                groups[item.月份].push(item);
+            });
+            
+            return Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(month => ({
+                month,
+                items: groups[month].sort((a, b) => (b.消课课时 || 0) - (a.消课课时 || 0)) // Sort teachers by hours within month
+            }));
+        });
+
         const showImport = ref(false);
         const importing = ref(false);
         const importProgress = ref(0);
@@ -56,37 +142,45 @@ createApp({
         });
 
         const campusList = ref(['临安校区', '昌化校区']);
-        const teacherList = ref(['小花老师', '小草老师', '桃子老师', '柚子老师']);
+        const teacherList = ref(['小花老师', '桃子老师', '柚子老师', '琪琪老师', '杨老师']);
         
         const currentMonth = ref(localStorage.getItem('selected_month') || '2025-12');
 
         // Watch for global month change
         watch(currentMonth, (newVal) => {
             localStorage.setItem('selected_month', newVal);
-            initCharts();
+            // Sync currentMonth to global filter if needed, but currentMonth is deprecated in favor of globalFilter
         });
 
         // Watch for global filter change
         watch(globalFilter, () => {
             initCharts();
         }, { deep: true });
-        // 课消数据 (1-9月真实数据)
-        const consumptionData = {
-            linan: {
-                amount: [6054.69, 7660.29, 32732.41, 28201.17, 31528.81, 26835.77, 37130.08, 26835.77, 22050.5],
-                hours: [45, 58, 239, 204, 221, 192, 429, 192, 167]
-            },
-            changhua: {
-                amount: [18157.53, 6938.18, 22588.75, 23371.68, 22040.35, 17217.79, 26252.02, 17217.79, 10410.9],
-                hours: [189, 74, 258, 264, 238, 180, 552, 180, 102]
-            }
-        };
-
         const kpis = reactive({
-            // 体验课 KPIs
-            exp_students: 128,
-            exp_total: 1540,
-            exp_conv_rate: 32.5,
+            // 体验课 KPIs - Dynamic based on filtered data
+            exp_invited: computed(() => {
+                return filteredExperienceDetails.value.length;
+            }),
+            exp_attended: computed(() => {
+                return filteredExperienceDetails.value.filter(item => 
+                    item.状态 === '已体验' || item.状态 === '已报课'
+                ).length;
+            }),
+            exp_enrolled: computed(() => {
+                return filteredExperienceDetails.value.filter(item => item.状态 === '已报课').length;
+            }),
+            exp_conv_rate: computed(() => {
+                const attended = kpis.exp_attended;
+                if (attended === 0) return 0;
+                const enrolled = kpis.exp_enrolled;
+                return ((enrolled / attended) * 100).toFixed(1);
+            }),
+            exp_attend_rate: computed(() => {
+                const invited = kpis.exp_invited;
+                if (invited === 0) return 0;
+                const attended = kpis.exp_attended;
+                return ((attended / invited) * 100).toFixed(1);
+            }),
             // 报课 KPIs - Dynamic based on filtered data
             enr_revenue: computed(() => {
                 return filteredEnrollmentDetails.value.reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
@@ -120,7 +214,47 @@ createApp({
                     }
                 });
                 return uniqueRenew.size;
+            }),
+            // 课消 KPIs
+            con_total_hours: computed(() => {
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.消课课时 || 0), 0);
+            }),
+            con_total_amount: computed(() => {
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.消课金额 || 0), 0);
+            }),
+            con_one_on_one_count: computed(() => {
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.一对一人次 || 0), 0);
+            }),
+            con_attendance_rate: computed(() => {
+                const data = filteredConsumptionDetails.value;
+                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
+                const total_possible = attendance + data.reduce((sum, item) => sum + (item.请假人次 || 0) + (item.缺勤人次 || 0), 0);
+                return total_possible > 0 ? ((attendance / total_possible) * 100).toFixed(1) : 0;
+            }),
+            con_leave_rate: computed(() => {
+                const data = filteredConsumptionDetails.value;
+                const leave = data.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
+                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
+                const total_possible = attendance + leave + data.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
+                return total_possible > 0 ? ((leave / total_possible) * 100).toFixed(1) : 0;
+            }),
+            con_absence_rate: computed(() => {
+                const data = filteredConsumptionDetails.value;
+                const absence = data.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
+                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
+                const total_possible = attendance + absence + data.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
+                return total_possible > 0 ? ((absence / total_possible) * 100).toFixed(1) : 0;
             })
+        });
+
+        // 兼容原有的 conKpis 名称
+        const conKpis = reactive({
+            total_hours: computed(() => kpis.con_total_hours),
+            total_amount: computed(() => kpis.con_total_amount),
+            one_on_one_count: computed(() => kpis.con_one_on_one_count),
+            attendance_rate: computed(() => kpis.con_attendance_rate),
+            leave_rate: computed(() => kpis.con_leave_rate),
+            absence_rate: computed(() => kpis.con_absence_rate)
         });
 
         // 修改日期判断逻辑，将 2025 年视为“去年”，2026 年视为“本年”
@@ -131,67 +265,167 @@ createApp({
         // ECharts instances
         let charts = {};
 
-        const loadDataFromStorage = () => {
-            const savedData = localStorage.getItem(`work_data_${currentMonth.value}`);
-            if (savedData) {
-                try {
-                    const parsed = JSON.parse(savedData);
-                    let totalRevenue = 0;
-                    let newContracts = 0;
-                    let renewContracts = 0;
-                    let expStudents = 0;
-                    let expEnrollments = 0;
-
-                    Object.values(parsed).forEach(row => {
-                        if (!row.parent && row.name !== '汇总') {
-                            totalRevenue += Number(row.totalSales || 0);
-                            newContracts += Number(row.newStudents || 0);
-                            renewContracts += Number(row.renewalStudents || 0);
-                            expStudents += Number(row.demoAttendees || 0);
-                            expEnrollments += Number(row.demoEnrollments || 0);
-                        }
-                    });
-
-                    // Update KPIs with real data for the month
-                    if (chartFilters.expKpi.dateRange === 'thisMonth') {
-                        kpis.exp_students = expStudents;
-                        kpis.exp_conv_rate = expStudents > 0 ? ((expEnrollments / expStudents) * 100).toFixed(1) : 0;
-                    }
-                    
-                    if (chartFilters.enrType.dateRange === 'thisMonth') {
-                        kpis.enr_revenue = totalRevenue;
-                        kpis.enr_total_amount = totalRevenue;
-                        kpis.enr_new_contracts = newContracts;
-                        kpis.enr_renew_contracts = renewContracts;
-                    }
-                } catch (e) {
-                    console.error('Failed to parse storage data:', e);
-                }
+        const initCharts = () => {
+            if (currentTab.value === 'experience') {
+                initExperienceCharts();
+            } else if (currentTab.value === 'enrollment') {
+                initEnrollmentCharts();
+            } else if (currentTab.value === 'consumption') {
+                initConsumptionCharts();
             }
         };
 
-        const initCharts = () => {
-            loadDataFromStorage();
-            if (currentTab.value === 'experience') {
-                initExperienceCharts();
-            } else {
-                initEnrollmentCharts();
+        const initConsumptionCharts = async () => {
+            await nextTick();
+            const getChart = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                let chart = echarts.getInstanceByDom(el);
+                if (chart) chart.dispose();
+                return echarts.init(el);
+            };
+
+            // 1. Teacher Rank Chart
+            const teacherRankChart = getChart('teacherRankChart');
+            if (teacherRankChart) {
+                const teacherData = {};
+                filteredConsumptionDetails.value.forEach(item => {
+                    teacherData[item.姓名] = (teacherData[item.姓名] || 0) + (item.消课课时 || 0);
+                });
+                const sorted = Object.entries(teacherData).sort((a, b) => b[1] - a[1]);
+                
+                teacherRankChart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'value' },
+                    yAxis: { type: 'category', data: sorted.map(d => d[0]).reverse() },
+                    series: [{
+                        name: '消课课时',
+                        type: 'bar',
+                        data: sorted.map(d => d[1]).reverse(),
+                        itemStyle: { color: '#3b82f6', borderRadius: [0, 4, 4, 0] }
+                    }]
+                });
+            }
+
+            // 2. Trend Chart (Enhanced with Attendance Rate)
+            const trendChart = getChart('trendChart');
+            if (trendChart) {
+                const monthlyData = {};
+                const selCampus = chartFilters.consumption.campus;
+                let trendData = consumptionDetails.value.filter(item => item.姓名 !== '汇总');
+                
+                if (selCampus !== 'all') {
+                    trendData = trendData.filter(item => item.校区 === selCampus);
+                }
+
+                trendData.forEach(item => {
+                    if (!monthlyData[item.月份]) {
+                        monthlyData[item.月份] = { hours: 0, attendance: 0, total_possible: 0 };
+                    }
+                    monthlyData[item.月份].hours += (item.消课课时 || 0);
+                    monthlyData[item.月份].attendance += (item.出勤人次 || 0);
+                    monthlyData[item.月份].total_possible += (item.出勤人次 || 0) + (item.请假人次 || 0) + (item.缺勤人次 || 0);
+                });
+                const months = Object.keys(monthlyData).sort();
+
+                trendChart.setOption({
+                    tooltip: { 
+                        trigger: 'axis',
+                        axisPointer: { type: 'cross' }
+                    },
+                    legend: { data: ['消课课时', '出勤率'], bottom: 0 },
+                    xAxis: { type: 'category', data: months.map(m => m.split('-')[1] + '月') },
+                    yAxis: [
+                        { type: 'value', name: '课时', position: 'left' },
+                        { type: 'value', name: '出勤率', position: 'right', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }
+                    ],
+                    series: [
+                        {
+                            name: '消课课时',
+                            data: months.map(m => monthlyData[m].hours),
+                            type: 'bar',
+                            itemStyle: { color: '#3b82f6', opacity: 0.8 }
+                        },
+                        {
+                            name: '出勤率',
+                            yAxisIndex: 1,
+                            data: months.map(m => {
+                                const d = monthlyData[m];
+                                return d.total_possible > 0 ? ((d.attendance / d.total_possible) * 100).toFixed(1) : 0;
+                            }),
+                            type: 'line',
+                            smooth: true,
+                            symbol: 'circle',
+                            symbolSize: 8,
+                            lineStyle: { color: '#10b981', width: 3 },
+                            itemStyle: { color: '#10b981' }
+                        }
+                    ]
+                });
+            }
+
+            // 3. Composition Chart (Enhanced to show Attendance breakdown)
+            const compositionChart = getChart('compositionChart');
+            if (compositionChart) {
+                const attendance = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
+                const leave = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
+                const absence = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
+                const makeup = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.补课人次 || 0), 0);
+
+                compositionChart.setOption({
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { bottom: '0', left: 'center', textStyle: { fontSize: 10 } },
+                    series: [{
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false },
+                        data: [
+                            { value: attendance, name: '正常出勤', itemStyle: { color: '#10b981' } },
+                            { value: leave, name: '请假', itemStyle: { color: '#f59e0b' } },
+                            { value: absence, name: '缺勤', itemStyle: { color: '#ef4444' } },
+                            { value: makeup, name: '补课', itemStyle: { color: '#3b82f6' } }
+                        ]
+                    }]
+                });
+            }
+
+            // 4. Attendance Chart
+            const attendanceChart = getChart('attendanceChart');
+            if (attendanceChart) {
+                const teacherAttendance = {};
+                filteredConsumptionDetails.value.forEach(item => {
+                    if (!teacherAttendance[item.姓名]) {
+                        teacherAttendance[item.姓名] = { attendance: 0, leave: 0, absence: 0, makeup: 0 };
+                    }
+                    teacherAttendance[item.姓名].attendance += (item.出勤人次 || 0);
+                    teacherAttendance[item.姓名].leave += (item.请假人次 || 0);
+                    teacherAttendance[item.姓名].absence += (item.缺勤人次 || 0);
+                    teacherAttendance[item.姓名].makeup += (item.补课人次 || 0);
+                });
+                const teachers = Object.keys(teacherAttendance);
+
+                attendanceChart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    legend: { data: ['出勤', '请假', '缺勤', '补课'], bottom: 0 },
+                    xAxis: { type: 'category', data: teachers },
+                    yAxis: { type: 'value' },
+                    series: [
+                        { name: '出勤', type: 'bar', stack: 'total', data: teachers.map(t => teacherAttendance[t].attendance), itemStyle: { color: '#10b981' } },
+                        { name: '请假', type: 'bar', stack: 'total', data: teachers.map(t => teacherAttendance[t].leave), itemStyle: { color: '#f59e0b' } },
+                        { name: '缺勤', type: 'bar', stack: 'total', data: teachers.map(t => teacherAttendance[t].absence), itemStyle: { color: '#ef4444' } },
+                        { name: '补课', type: 'bar', stack: 'total', data: teachers.map(t => teacherAttendance[t].makeup), itemStyle: { color: '#3b82f6' } }
+                    ]
+                });
             }
         };
 
         const initExperienceCharts = async () => {
             await nextTick();
             
-            // Update KPIs based on filter
-            if (chartFilters.expKpi.dateRange === 'thisYear') {
-                kpis.exp_students = isThisYear(currentMonth.value) ? 0 : 128;
-                kpis.exp_total = isThisYear(currentMonth.value) ? 0 : 1540;
-                kpis.exp_conv_rate = isThisYear(currentMonth.value) ? 0 : 32.5;
-            } else {
-                kpis.exp_students = 12;
-                kpis.exp_total = 1540;
-                kpis.exp_conv_rate = 28.5;
-            }
+            // KPIs are now computed properties and will update automatically.
 
             // Helper to get or init chart
             const getChart = (id) => {
@@ -200,44 +434,45 @@ createApp({
                 return chart;
             };
 
-            // 1. Grade Distribution
+            // 1. Grade Distribution (Real data)
             const gradeChart = getChart('gradeChart');
             const selGradeCampus = chartFilters.grade.campus;
-            const gradeData = {
-                'all': [45, 32, 28, 15, 8, 5, 2],
-                '临安校区': [25, 18, 15, 8, 5, 3, 1],
-                '昌化校区': [20, 14, 13, 7, 3, 2, 1]
-            };
+            
+            const gradeCounts = {};
+            filteredExperienceDetails.value.forEach(item => {
+                if (selGradeCampus === 'all' || item.所在校区 === selGradeCampus) {
+                    const grade = item.年龄 || '未知';
+                    gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+                }
+            });
+            
+            // Sort grades if possible, otherwise just use keys
+            const sortedGrades = Object.entries(gradeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
             gradeChart.setOption({
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                 grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                 xAxis: { type: 'value', splitLine: { show: false } },
-                yAxis: { type: 'category', data: ['幼儿园', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级'] },
+                yAxis: { type: 'category', data: sortedGrades.map(g => g[0]).reverse() },
                 series: [{
                     name: '学员数',
                     type: 'bar',
-                    data: gradeData[selGradeCampus] || gradeData['all'],
+                    data: sortedGrades.map(g => g[1]).reverse(),
                     itemStyle: { color: '#3b82f6', borderRadius: [0, 4, 4, 0] }
                 }]
             });
             charts.gradeChart = gradeChart;
 
-            // 2. Source Chart
+            // 2. Source Chart (Real data)
             const sourceChart = getChart('sourceChart');
-            const isSourceYear = chartFilters.source.dateRange === 'thisYear';
-            const sourceData = isSourceYear ? [
-                { name: '地推', value: 40 },
-                { name: '转介绍', value: 35 },
-                { name: '线上广告', value: 20 },
-                { name: '异业合作', value: 15 },
-                { name: '自然进店', value: 10 }
-            ] : [
-                { name: '地推', value: 5 },
-                { name: '转介绍', value: 4 },
-                { name: '线上广告', value: 2 },
-                { name: '异业合作', value: 1 },
-                { name: '自然进店', value: 1 }
-            ];
+            const sourceCounts = {};
+            filteredExperienceDetails.value.forEach(item => {
+                const source = item.学员来源 || '未知';
+                sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+            });
+            
+            const sourceData = Object.entries(sourceCounts).map(([name, value]) => ({ name, value }));
+
             sourceChart.setOption({
                 tooltip: { trigger: 'item' },
                 series: [{
@@ -249,15 +484,18 @@ createApp({
             });
             charts.sourceChart = sourceChart;
 
-            // 3. Gender Chart
+            // 3. Gender Chart (Real data)
             const genderChart = getChart('genderChart');
             const selGenderCampus = chartFilters.gender.campus;
-            const genderDataMap = {
-                'all': [{ value: 68, name: '男宝' }, { value: 60, name: '女宝' }],
-                '临安校区': [{ value: 38, name: '男宝' }, { value: 32, name: '女宝' }],
-                '昌化校区': [{ value: 30, name: '男宝' }, { value: 28, name: '女宝' }]
-            };
-            const currentGenderData = genderDataMap[selGenderCampus] || genderDataMap['all'];
+            
+            let male = 0, female = 0;
+            filteredExperienceDetails.value.forEach(item => {
+                if (selGenderCampus === 'all' || item.所在校区 === selGenderCampus) {
+                    if (item.性别 === '男') male++;
+                    else if (item.性别 === '女') female++;
+                }
+            });
+
             genderChart.setOption({
                 tooltip: { trigger: 'item' },
                 legend: { bottom: '0', left: 'center' },
@@ -269,69 +507,106 @@ createApp({
                     label: { show: false, position: 'center' },
                     emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
                     data: [
-                        { value: currentGenderData[0].value, name: '男宝', itemStyle: { color: '#60a5fa' } },
-                        { value: currentGenderData[1].value, name: '女宝', itemStyle: { color: '#f472b6' } }
+                        { value: male, name: '男宝', itemStyle: { color: '#60a5fa' } },
+                        { value: female, name: '女宝', itemStyle: { color: '#f472b6' } }
                     ]
                 }]
             });
             charts.genderChart = genderChart;
 
-            // 4. Funnel Chart
+            // 4. Funnel Chart (Refactored logic)
             const funnelChart = getChart('funnelChart');
             const selFunnelTeacher = chartFilters.funnel.teacher;
-            // Mock data for funnel based on teacher
-            const funnelDataMap = {
-                'all': [100, 75, 32.5],
-                '小花老师': [100, 80, 40],
-                '小草老师': [100, 70, 25],
-                '桃子老师': [100, 85, 45],
-                '柚子老师': [100, 65, 20]
-            };
-            const fData = funnelDataMap[selFunnelTeacher] || funnelDataMap['all'];
+            
+            let invitedCount = 0;   // 邀约数
+            let attendedCount = 0;  // 到访人数
+            let enrolledCount = 0;  // 报课人数
+
+            if (selFunnelTeacher === 'all') {
+                invitedCount = filteredExperienceDetails.value.length;
+                attendedCount = filteredExperienceDetails.value.filter(item => item.状态 === '已体验' || item.状态 === '已报课').length;
+                enrolledCount = filteredExperienceDetails.value.filter(item => item.状态 === '已报课').length;
+            } else {
+                // 筛选特定老师时：
+                // 1. 邀约数取自该老师作为“邀约老师”的数据
+                invitedCount = filteredExperienceDetails.value.filter(item => item.邀约老师 === selFunnelTeacher).length;
+                
+                // 2. 到访和报课取自该老师作为“体验课老师”的数据
+                const teacherExpRecords = filteredExperienceDetails.value.filter(item => item.体验课老师 === selFunnelTeacher);
+                attendedCount = teacherExpRecords.filter(item => item.状态 === '已体验' || item.状态 === '已报课').length;
+                enrolledCount = teacherExpRecords.filter(item => item.状态 === '已报课').length;
+            }
+
+            // 为了在漏斗图中正确显示（即使第一层比第二层小），我们使用真实数值
+            // 并通过计算比例来控制漏斗的宽度展示
+            const attendRate = invitedCount > 0 ? ((attendedCount / invitedCount) * 100).toFixed(1) : 0;
+            const enrollRate = attendedCount > 0 ? ((enrolledCount / attendedCount) * 100).toFixed(1) : 0;
+            const totalRate = invitedCount > 0 ? ((enrolledCount / invitedCount) * 100).toFixed(1) : 0;
+            
             funnelChart.setOption({
-                tooltip: { trigger: 'item', formatter: "{a} <br/>{b} : {c}%" },
+                tooltip: { 
+                    trigger: 'item', 
+                    formatter: function(params) {
+                        let res = `${params.name}: ${params.data.realValue}人`;
+                        if (params.name === '已体验') res += `<br/>到访率: ${attendRate}%`;
+                        if (params.name === '已报课') res += `<br/>报课转化率: ${enrollRate}%<br/>总转化率: ${totalRate}%`;
+                        return res;
+                    }
+                },
                 legend: { data: ['已邀约', '已体验', '已报课'], bottom: 0 },
                 series: [{
                     name: '转化漏斗',
                     type: 'funnel',
                     left: '10%', top: 20, bottom: 60, width: '80%',
-                    min: 0, max: 100,
-                    minSize: '0%', maxSize: '100%',
-                    sort: 'descending', gap: 2,
-                    label: { show: true, position: 'inside' },
-                    labelLine: { length: 10, lineStyle: { width: 1, type: 'solid' } },
+                    sort: 'none', // 不自动排序，保持 邀约 -> 体验 -> 报课 的顺序
+                    gap: 2,
+                    label: { 
+                        show: true, 
+                        position: 'inside', 
+                        formatter: function(params) {
+                            let label = `${params.name}: ${params.data.realValue}人`;
+                            if (params.name === '已体验') label += ` (${attendRate}%)`;
+                            if (params.name === '已报课') label += ` (${enrollRate}%)`;
+                            return label;
+                        }
+                    },
                     itemStyle: { borderColor: '#fff', borderWidth: 1 },
-                    emphasis: { label: { fontSize: 20 } },
                     data: [
-                        { value: fData[0], name: '已邀约', itemStyle: { color: '#94a3b8' } },
-                        { value: fData[1], name: '已体验', itemStyle: { color: '#60a5fa' } },
-                        { value: fData[2], name: '已报课', itemStyle: { color: '#3b82f6' } }
+                        { value: invitedCount, name: '已邀约', itemStyle: { color: '#94a3b8' }, realValue: invitedCount },
+                        { value: attendedCount, name: '已体验', itemStyle: { color: '#60a5fa' }, realValue: attendedCount },
+                        { value: enrolledCount, name: '已报课', itemStyle: { color: '#10b981' }, realValue: enrolledCount }
                     ]
                 }]
             });
             charts.funnelChart = funnelChart;
 
-            // 5. Teacher Exp Chart
+            // 5. Teacher Exp Chart (Simplified)
             const teacherExpChart = getChart('teacherExpChart');
-            const isTeacherYear = chartFilters.teacherExp.dateRange === 'thisYear';
-            const teacherExpData = isTeacherYear ? {
-                amounts: [212391.3, 173553.0, 114519.2, 108938.3],
-                rates: [34.9, 28.5, 18.8, 17.9]
-            } : {
-                amounts: [21000, 15000, 11000, 10500],
-                rates: [36.5, 26.1, 19.1, 18.3]
-            };
+            const expStats = {}; 
+            
+            filteredExperienceDetails.value.forEach(item => {
+                if (item.状态 === '已体验' || item.状态 === '已报课') {
+                    const expTeacher = item.体验课老师 || '未知';
+                    if (!expStats[expTeacher]) {
+                        expStats[expTeacher] = { attended: 0, enrolled: 0 };
+                    }
+                    expStats[expTeacher].attended++;
+                    if (item.状态 === '已报课') {
+                        expStats[expTeacher].enrolled++;
+                    }
+                }
+            });
+            
+            const sortedExpTeachers = Object.entries(expStats).sort((a, b) => b[1].attended - a[1].attended);
+
             teacherExpChart.setOption({
-                tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                legend: { data: ['个人业绩', '业绩占比'], bottom: 0 },
-                xAxis: { type: 'category', data: ['桃子老师', '小草老师', '柚子老师', '小花老师'] },
-                yAxis: [
-                    { type: 'value', name: '金额', min: 0 },
-                    { type: 'value', name: '占比', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }
-                ],
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { data: ['到访人数', '报课人数'], bottom: 0 },
+                xAxis: { type: 'category', data: sortedExpTeachers.map(t => t[0]) },
+                yAxis: { type: 'value', name: '人数' },
                 series: [
-                    { name: '个人业绩', type: 'bar', data: teacherExpData.amounts, itemStyle: { color: '#3b82f6' } },
-                    { name: '业绩占比', type: 'line', yAxisIndex: 1, data: teacherExpData.rates, itemStyle: { color: '#f59e0b' } }
+                    { name: '到访人数', type: 'bar', data: sortedExpTeachers.map(t => t[1].attended), itemStyle: { color: '#60a5fa' } },
+                    { name: '报课人数', type: 'bar', data: sortedExpTeachers.map(t => t[1].enrolled), itemStyle: { color: '#10b981' } }
                 ]
             });
             charts.teacherExpChart = teacherExpChart;
@@ -358,7 +633,7 @@ createApp({
             const trendValues = months.map(m => {
                 const monthStr = `${globalFilter.year}-${m}`;
                 return enrollmentDetails.value
-                    .filter(item => item.报课时间.startsWith(monthStr) && (selTrendCampus === 'all' || item.所在校区 === selTrendCampus))
+                    .filter(item => item.报课时间 && item.报课时间.startsWith(monthStr) && (selTrendCampus === 'all' || item.所在校区 === selTrendCampus))
                     .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
             });
 
@@ -385,23 +660,32 @@ createApp({
 
             // 2. Enrollment Type (Calculated from real data)
             const enrTypeChart = getChart('enrTypeChart');
-            const newTotal = filteredEnrollmentDetails.value
-                .filter(item => item.报课属性.includes('新报'))
-                .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
-            const renewTotal = filteredEnrollmentDetails.value
-                .filter(item => item.报课属性.includes('续费'))
-                .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
+            const typeMap = {};
+            filteredEnrollmentDetails.value.forEach(item => {
+                if (item.报课属性) {
+                    const type = item.报课属性;
+                    typeMap[type] = (typeMap[type] || 0) + (Number(item.归属业绩金额) || 0);
+                }
+            });
+            
+            const typeData = Object.entries(typeMap).map(([name, value]) => {
+                let color = '#94a3b8'; // Default color
+                if (name.includes('新报')) color = '#10b981';
+                else if (name.includes('续费')) color = '#3b82f6';
+                else if (name.includes('专项')) color = '#f59e0b';
+                
+                return { name, value, itemStyle: { color } };
+            }).sort((a, b) => b.value - a.value);
 
             enrTypeChart.setOption({
-                tooltip: { trigger: 'item' },
-                legend: { bottom: '0', left: 'center' },
+                tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
+                legend: { bottom: '0', left: 'center', type: 'scroll' },
                 series: [{
                     type: 'pie',
-                    radius: '60%',
-                    data: [
-                        { value: newTotal, name: '新报及专项', itemStyle: { color: '#10b981' } },
-                        { value: renewTotal, name: '续费', itemStyle: { color: '#3b82f6' } }  
-                    ],
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: true,
+                    itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+                    data: typeData,
                     label: { show: true, formatter: '{b}: {d}%' }
                 }]
             });
@@ -416,14 +700,18 @@ createApp({
             if (isCampus) {
                 const campusMap = {};
                 filteredEnrollmentDetails.value.forEach(item => {
-                    campusMap[item.所在校区] = (campusMap[item.所在校区] || 0) + Number(item.归属业绩金额);
+                    if (item.所在校区) {
+                        campusMap[item.所在校区] = (campusMap[item.所在校区] || 0) + Number(item.归属业绩金额);
+                    }
                 });
                 rankingData.labels = Object.keys(campusMap);
                 rankingData.values = Object.values(campusMap);
             } else {
                 const teacherMap = {};
                 filteredEnrollmentDetails.value.forEach(item => {
-                    teacherMap[item.业绩归属人] = (teacherMap[item.业绩归属人] || 0) + Number(item.归属业绩金额);
+                    if (item.业绩归属人) {
+                        teacherMap[item.业绩归属人] = (teacherMap[item.业绩归属人] || 0) + Number(item.归属业绩金额);
+                    }
                 });
                 // Sort teachers by value
                 const sorted = Object.entries(teacherMap).sort((a, b) => a[1] - b[1]);
@@ -453,7 +741,7 @@ createApp({
             const aovTrendChart = getChart('aovTrendChart');
             const aovValues = months.map(m => {
                 const monthStr = `${globalFilter.year}-${m}`;
-                const monthData = enrollmentDetails.value.filter(item => item.报课时间.startsWith(monthStr));
+                const monthData = enrollmentDetails.value.filter(item => item.报课时间 && item.报课时间.startsWith(monthStr));
                 if (monthData.length === 0) return 0;
                 
                 const uniqueTransactions = new Set();
@@ -483,64 +771,25 @@ createApp({
             });
             charts.aovTrendChart = aovTrendChart;
 
-            // 5. Consumption Chart (消课数据 - Keep Mock as it's not in the file)
-            const consumptionChart = getChart('consumptionChart');
-            const cMonths = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月'];
-            const selCampus = chartFilters.consumption.campus;
-            
-            let cAmount, cHours;
-            if (selCampus === 'all') {
-                cAmount = consumptionData.linan.amount.map((v, i) => v + consumptionData.changhua.amount[i]);
-                cHours = consumptionData.linan.hours.map((v, i) => v + consumptionData.changhua.hours[i]);
-            } else if (selCampus === '临安校区') {
-                cAmount = consumptionData.linan.amount;
-                cHours = consumptionData.linan.hours;
-            } else {
-                cAmount = consumptionData.changhua.amount;
-                cHours = consumptionData.changhua.hours;
-            }
-
-            consumptionChart.setOption({
-                tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                legend: { data: ['消课金额', '消课课时', '课消率'], bottom: 0 },
-                grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                xAxis: { type: 'category', data: cMonths },
-                yAxis: [
-                    { type: 'value', name: '金额 (¥)', position: 'left' },
-                    { type: 'value', name: '课时', position: 'right' },
-                    { type: 'value', name: '课消率', position: 'right', offset: 50, axisLabel: { formatter: '{value}%' }, max: 100 }
-                ],
-                series: [
-                    { name: '消课金额', type: 'line', smooth: true, data: cAmount, itemStyle: { color: '#3b82f6' } },
-                    { name: '消课课时', type: 'bar', yAxisIndex: 1, data: cHours, itemStyle: { color: '#94a3b8', opacity: 0.6 } },
-                    { 
-                        name: '课消率', type: 'line', yAxisIndex: 2, 
-                        data: cAmount.map(v => (v / 80000 * 100).toFixed(1)), 
-                        itemStyle: { color: '#ef4444' } 
-                    }
-                ]
-            });
-            charts.consumptionChart = consumptionChart;
-
-            // 6. Campus Performance Chart (Calculated from real data)
+            // 5. Campus Performance Chart (Calculated from real data)
             const campusPerfChart = getChart('campusPerfChart');
             
-            const campusList = ['临安校区', '昌化校区'];
-            const campusNewValues = campusList.map(c => {
+            const cList = ['临安校区', '昌化校区'];
+            const campusNewValues = cList.map(c => {
                 return filteredEnrollmentDetails.value
-                    .filter(item => item.所在校区 === c && item.报课属性.includes('新报'))
+                    .filter(item => item.所在校区 === c && item.报课属性 && item.报课属性.includes('新报'))
                     .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
             });
-            const campusRenewValues = campusList.map(c => {
+            const campusRenewValues = cList.map(c => {
                 return filteredEnrollmentDetails.value
-                    .filter(item => item.所在校区 === c && item.报课属性.includes('续费'))
+                    .filter(item => item.所在校区 === c && item.报课属性 && item.报课属性.includes('续费'))
                     .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
             });
 
             campusPerfChart.setOption({
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                 legend: { data: ['新签金额', '续费金额'], bottom: 0 },
-                xAxis: { type: 'category', data: campusList },
+                xAxis: { type: 'category', data: cList },
                 yAxis: { type: 'value', name: '金额 (¥)' },
                 series: [
                     { name: '新签金额', type: 'bar', stack: 'total', data: campusNewValues, itemStyle: { color: '#10b981' } },
@@ -655,11 +904,8 @@ createApp({
         watch(() => chartFilters.ranking.type, () => {
             if (currentTab.value === 'enrollment') initEnrollmentCharts();
         });
-        watch(() => chartFilters.ranking.dateRange, () => {
-            if (currentTab.value === 'enrollment') initEnrollmentCharts();
-        });
         watch(() => chartFilters.consumption.campus, () => {
-            if (currentTab.value === 'enrollment') initEnrollmentCharts();
+            if (currentTab.value === 'consumption') initConsumptionCharts();
         });
         watch(() => chartFilters.revenueTrend.campus, () => {
             if (currentTab.value === 'enrollment') initEnrollmentCharts();
@@ -667,23 +913,8 @@ createApp({
         watch(() => chartFilters.aov.campus, () => {
             if (currentTab.value === 'enrollment') initEnrollmentCharts();
         });
-        watch(() => chartFilters.campusPerf.dateRange, () => {
-            if (currentTab.value === 'enrollment') initEnrollmentCharts();
-        });
-        watch(() => chartFilters.enrType.dateRange, () => {
-            if (currentTab.value === 'enrollment') initEnrollmentCharts();
-        });
         
         // Experience filters
-        watch(() => chartFilters.expKpi.dateRange, () => {
-            if (currentTab.value === 'experience') initExperienceCharts();
-        });
-        watch(() => chartFilters.source.dateRange, () => {
-            if (currentTab.value === 'experience') initExperienceCharts();
-        });
-        watch(() => chartFilters.teacherExp.dateRange, () => {
-            if (currentTab.value === 'experience') initExperienceCharts();
-        });
         watch(() => chartFilters.grade.campus, () => {
             if (currentTab.value === 'experience') initExperienceCharts();
         });
@@ -711,8 +942,13 @@ createApp({
         });
 
         return {
-            currentTab, enrSearch, filteredEnrollmentDetails, globalFilter, showImport, importing, importProgress, parsedData, chartFilters,
-            campusList, teacherList, kpis, currentMonth, saveStatus,
+            currentTab, enrSearch, enrTableExpanded, expSearch, expTableExpanded, 
+            conSearch, conTableExpanded,
+            enrollmentDetails, experienceDetails, consumptionDetails,
+            filteredEnrollmentDetails, filteredExperienceDetails, filteredConsumptionDetails,
+            searchedEnrollmentDetails, searchedExperienceDetails, searchedConsumptionDetails,
+            globalFilter, showImport, importing, importProgress, parsedData, chartFilters,
+            campusList, teacherList, kpis, conKpis, currentMonth, saveStatus,
             handleExcelUpload, handleImageUpload, clearParsedData, confirmImport,
             addEmptyRow, removeRow
         };

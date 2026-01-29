@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校区运营数据大屏 - 声度星主持</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- Day.js -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #050a0f;
+            --card-bg: rgba(16, 24, 39, 0.8);
+            --primary-blue: #00d2ff;
+            --secondary-blue: #3a7bd5;
+            --accent-cyan: #00f2fe;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: rgba(0, 210, 255, 0.2);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 210, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(58, 123, 213, 0.05) 0%, transparent 40%);
+        }
+
+        .dashboard-container {
+            padding: 1rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 2rem;
+            background: linear-gradient(180deg, rgba(0, 210, 255, 0.1) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-blue), transparent);
+        }
+
+        .header-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            background: linear-gradient(to bottom, #fff, var(--primary-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+        }
+
+        /* Card Styles */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(0, 210, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 14px;
+            background: var(--primary-blue);
+            display: inline-block;
+            box-shadow: 0 0 8px var(--primary-blue);
+        }
+
+        /* Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 24% 51% 24%;
+            gap: 0.75rem;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 1280px) {
+            .dashboard-grid {
+                grid-template-columns: 30% 70%;
+            }
+            .right-col {
+                grid-column: span 2;
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .right-col {
+                grid-column: span 1;
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Components */
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .rank-num {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            border-radius: 2px;
+        }
+
+        .rank-1 { background: #ff4d4f; color: white; }
+        .rank-2 { background: #ffa940; color: white; }
+        .rank-3 { background: #ffec3d; color: #000; }
+        .rank-other { background: #3a7bd5; color: white; }
+
+        .chart-box {
+            width: 100%;
+            height: 180px;
+        }
+
+        .main-chart-box {
+            width: 100%;
+            height: 300px;
+        }
+
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak class="dashboard-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="flex items-center gap-2 px-3 py-1 bg-blue-900/40 border border-blue-500/30 rounded-lg hover:bg-blue-800/60 transition-all group">
+                    <svg class="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span class="text-xs font-bold text-blue-300">返回仪表盘首页</span>
+                </a>
+                <div class="h-6 w-px bg-white/10 mx-2"></div>
+                <img src="https://img.icons8.com/fluency/48/000000/dashboard.png" class="w-6 h-6" alt="Logo">
+                <span class="text-sm font-bold text-blue-400">声度星主持</span>
+            </div>
+            <h1 class="header-title">校区运营全景数据大屏</h1>
+            <div class="flex items-center gap-4">
+                <!-- Time Range Filter -->
+                <div class="flex bg-blue-900/40 border border-blue-500/30 p-0.5 rounded-lg">
+                    <button v-for="t in ['year', 'quarter', 'month']" :key="t"
+                            @click="timeRange = t"
+                            :class="['px-3 py-1 rounded text-[10px] font-bold transition-all', timeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-blue-400 hover:text-blue-200']">
+                        {{ t === 'year' ? '年度' : t === 'quarter' ? '季度' : '月度' }}
+                    </button>
+                </div>
+                <div class="bg-blue-900/40 border border-blue-500/30 px-3 py-1 rounded text-xs">
+                    <select v-model="selectedYear" class="bg-transparent text-blue-300 outline-none cursor-pointer">
+                        <option value="2025">2025年度</option>
+                        <option value="2024">2024年度</option>
+                    </select>
+                </div>
+                <div class="text-right min-w-[140px]">
+                    <div class="text-sm font-mono text-blue-300">{{ currentTime }}</div>
+                    <div class="text-[10px] text-slate-500">数据更新: {{ lastUpdateTime }}</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-grid">
+            <!-- Left Column -->
+            <div class="flex flex-col gap-3">
+                <!-- 在读学员概况 -->
+                <div class="glass-card">
+                    <div class="card-title justify-between">
+                        <span>在读学员概况</span>
+                        <span class="text-[10px] text-blue-500 font-mono">YoY: +12.5%</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="relative group cursor-help">
+                            <div class="kpi-label">在读学员数</div>
+                            <div class="kpi-value text-blue-400">{{ kpis.active_students }}</div>
+                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">环比: +2.3%</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">新增报读</div>
+                            <div class="kpi-value text-cyan-400">{{ kpis.new_enrollments }}</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">历史学员</div>
+                            <div class="kpi-value text-slate-400">{{ kpis.total_history }}</div>
+                        </div>
+                    </div>
+                    <div id="activeStudentChart" class="chart-box mt-2"></div>
+                </div>
+
+                <!-- 意向学员概况 -->
+                <div class="glass-card">
+                    <div class="card-title justify-between">
+                        <span>意向学员概况</span>
+                        <div class="flex gap-2">
+                            <span class="text-[10px] px-1 bg-blue-500/20 text-blue-400 rounded">转化率: {{ kpis.lead_to_exp_rate }}%</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <div class="kpi-label">意向学员数</div>
+                            <div class="kpi-value text-blue-400">{{ kpis.leads_count }}</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">新增意向</div>
+                            <div class="kpi-value text-cyan-400">{{ kpis.new_leads }}</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">跟进记录</div>
+                            <div class="kpi-value text-slate-400">{{ kpis.follow_ups }}</div>
+                        </div>
+                    </div>
+                    <div id="leadsChart" class="chart-box mt-2"></div>
+                </div>
+
+                <!-- 试听转化概况 -->
+                <div class="glass-card flex-grow">
+                    <div class="card-title">试听转化概况</div>
+                    <div id="conversionFunnel" class="chart-box" style="height: 220px;"></div>
+                    <div class="mt-2 space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">试听邀约数</span>
+                            <span class="text-white">{{ kpis.exp_invited }}</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">试听完成数</span>
+                            <span class="text-white">{{ kpis.exp_attended }}</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">试听转化数</span>
+                            <span class="text-white">{{ kpis.exp_enrolled }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Column -->
+            <div class="flex flex-col gap-3">
+                <!-- Top Message Bar -->
+                <div class="glass-card py-2 bg-blue-900/20 border-blue-500/30">
+                    <div class="flex items-center gap-3">
+                        <span class="animate-pulse">📢</span>
+                        <div class="text-sm overflow-hidden whitespace-nowrap">
+                            <span class="text-blue-300">喜报！{{ latestEnrollmentMsg }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main KPIs -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-card bg-gradient-to-br from-blue-900/40 to-transparent">
+                        <div class="card-title justify-between">
+                            <span>总收入 (CNY)</span>
+                            <span class="text-[10px] text-green-400">环比 +8.2% ↑</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-3xl font-bold text-white">¥{{ formatNumber(kpis.total_revenue) }}</div>
+                            <div class="text-right">
+                                <div class="text-[10px] text-blue-400">订单: {{ kpis.order_count }}</div>
+                                <div class="text-[10px] text-slate-500">客单价: ¥{{ formatNumber(kpis.total_revenue / (kpis.order_count || 1)) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card bg-gradient-to-br from-purple-900/40 to-transparent">
+                        <div class="card-title justify-between">
+                            <span>总课消人次</span>
+                            <span class="text-[10px] text-purple-400">完成率 92%</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-3xl font-bold text-white">{{ formatNumber(kpis.total_consumption_count) }}</div>
+                            <div class="text-right">
+                                <div class="text-[10px] text-purple-400">金额: ¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
+                                <div class="text-[10px] text-slate-500">人均消课: {{ (kpis.total_consumption_count / (kpis.active_students || 1)).toFixed(1) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Trend -->
+                <div class="glass-card">
+                    <div class="card-title">机构总收入趋势</div>
+                    <div id="revenueTrendChart" class="main-chart-box"></div>
+                </div>
+
+                <!-- Campus Rankings & Distribution -->
+                <div class="grid grid-cols-2 gap-3 flex-grow">
+                    <div class="glass-card">
+                        <div class="card-title">校区收入排名</div>
+                        <div class="space-y-2 mt-2">
+                            <div v-for="(item, index) in campusRankings" :key="index" class="ranking-item">
+                                <span :class="['rank-num', index < 3 ? 'rank-' + (index + 1) : 'rank-other']">{{ index + 1 }}</span>
+                                <span class="text-xs flex-grow truncate">{{ item.name }}</span>
+                                <span class="text-xs font-mono text-blue-300">¥{{ formatNumber(item.value) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-title">新签续报占比</div>
+                        <div id="enrollmentRatioChart" class="chart-box" style="height: 180px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="flex flex-col gap-3 right-col">
+                <!-- 课消排名 -->
+                <div class="glass-card">
+                    <div class="card-title">校区课消排名</div>
+                    <div class="mt-2">
+                        <table class="w-full text-left text-[10px]">
+                            <thead class="text-slate-500 border-b border-white/10">
+                                <tr>
+                                    <th class="pb-1">校区名</th>
+                                    <th class="pb-1 text-right">课消人次</th>
+                                    <th class="pb-1 text-right">课消金额</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-slate-300">
+                                <tr v-for="(item, index) in consumptionRankings" :key="index" class="border-b border-white/5">
+                                    <td class="py-2 flex items-center gap-2">
+                                        <span :class="['rank-num', index < 3 ? 'rank-' + (index + 1) : 'rank-other']" style="width:14px; height:14px; font-size:9px">{{ index + 1 }}</span>
+                                        <span class="truncate w-20">{{ item.name }}</span>
+                                    </td>
+                                    <td class="py-2 text-right font-mono">{{ formatNumber(item.count) }}</td>
+                                    <td class="py-2 text-right font-mono text-blue-400">{{ formatNumber(item.amount) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 课消概况 -->
+                <div class="glass-card">
+                    <div class="card-title">课消概况</div>
+                    <div class="grid grid-cols-3 gap-2 text-center mb-2">
+                        <div>
+                            <div class="kpi-label">报名总学费</div>
+                            <div class="kpi-value text-sm">¥{{ formatNumber(kpis.total_revenue) }}</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">课消金额</div>
+                            <div class="kpi-value text-sm text-cyan-400">¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
+                        </div>
+                        <div>
+                            <div class="kpi-label">剩余学费</div>
+                            <div class="kpi-value text-sm text-orange-400">¥{{ formatNumber(kpis.total_revenue - kpis.total_consumption_amount) }}</div>
+                        </div>
+                    </div>
+                    <div id="consumptionChart" class="chart-box"></div>
+                </div>
+
+                <!-- 家校概况 -->
+                <div class="glass-card flex-grow">
+                    <div class="card-title">家校概况</div>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="text-center">
+                            <div id="bindRateChart" style="height: 80px;"></div>
+                            <div class="kpi-label mt-1">公众号绑定率</div>
+                            <div class="text-xs text-white">36%</div>
+                        </div>
+                        <div class="text-center">
+                            <div id="commentRateChart" style="height: 80px;"></div>
+                            <div class="kpi-label mt-1">老师点评审</div>
+                            <div class="text-xs text-white">72%</div>
+                        </div>
+                        <div class="text-center">
+                            <div id="taskRateChart" style="height: 80px;"></div>
+                            <div class="kpi-label mt-1">课后任务发布率</div>
+                            <div class="text-xs text-white">82%</div>
+                        </div>
+                        <div class="text-center">
+                            <div id="noticeRateChart" style="height: 80px;"></div>
+                            <div class="kpi-label mt-1">通知公告阅读率</div>
+                            <div class="text-xs text-white">48%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Data dependencies -->
+    <script src="data-2025.js"></script>
+    <script src="data-experience-2025.js"></script>
+    <script src="data-consumption-2025.js"></script>
+    <script src="home-dashboard.js"></script>
+</body>
+</html>

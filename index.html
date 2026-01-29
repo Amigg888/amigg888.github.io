@@ -23,84 +23,141 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Modern Tab Switcher Styles */
+        .segmented-control {
+            position: relative;
+            display: flex;
+            background-color: #f1f5f9; /* slate-100 */
+            padding: 2px;
+            border-radius: 12px;
+            isolation: isolate;
+        }
+        .segmented-control .indicator {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            left: 2px;
+            width: calc(33.333% - 2px);
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: -1;
+        }
+        .segmented-control button {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b; /* slate-500 */
+            transition: color 0.3s;
+            white-space: nowrap;
+        }
+        .segmented-control button.active {
+            color: #2563eb; /* blue-600 */
+        }
+        .tab-exp .indicator { transform: translateX(0); }
+        .tab-enr .indicator { transform: translateX(100%); }
+        .tab-con .indicator { transform: translateX(200%); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
     <div id="app" v-cloak class="min-h-screen flex flex-col">
         <!-- Top Navigation / Filter Bar -->
-        <header class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm px-4 py-3 md:px-8">
-            <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="bg-blue-600 p-2 rounded-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-2 md:px-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+                <div class="flex items-center gap-4 md:gap-8">
+                    <!-- Title & Logo -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="bg-blue-600 p-1.5 rounded-lg">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                        <h1 class="text-base font-bold tracking-tight whitespace-nowrap">声度星主持仪表盘</h1>
                     </div>
-                    <h1 class="text-xl font-bold tracking-tight">声度星主持数据仪表盘</h1>
+
+                    <!-- Global Filter Integrated in Header -->
+                    <div class="flex items-center gap-2 bg-slate-100/80 px-2 py-1 rounded-xl border border-slate-200/60 shadow-sm backdrop-blur-sm">
+                        <div class="flex bg-slate-200/50 p-0.5 rounded-lg">
+                            <button @click="globalFilter.type = 'year'" 
+                                    :class="['px-3 py-1 rounded-md text-[10px] font-bold transition-all duration-300', globalFilter.type === 'year' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
+                                年度
+                            </button>
+                            <button @click="globalFilter.type = 'month'" 
+                                    :class="['px-3 py-1 rounded-md text-[10px] font-bold transition-all duration-300', globalFilter.type === 'month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
+                                月度
+                            </button>
+                        </div>
+                        
+                        <div class="h-4 w-px bg-slate-300/50 mx-1"></div>
+
+                        <div v-if="globalFilter.type === 'year'" class="flex items-center">
+                            <select v-model="globalFilter.year" class="bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none cursor-pointer focus:ring-0 py-0 pr-6">
+                                <option value="2025">2025年</option>
+                            </select>
+                        </div>
+                        
+                        <div v-else class="flex items-center">
+                            <input type="month" v-model="globalFilter.month" min="2025-01" max="2025-12"
+                                   class="bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none cursor-pointer focus:ring-0 py-0 w-24">
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 text-sm">
-                    <!-- Tab Switcher Integrated in Header -->
-                    <div class="flex bg-slate-100 p-1 rounded-lg mr-2">
-                        <button @click="currentTab = 'experience'" 
-                                :class="['px-4 py-1.5 rounded-md transition-all text-xs font-medium', currentTab === 'experience' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
-                            体验课数据
-                        </button>
-                        <button @click="currentTab = 'enrollment'" 
-                                :class="['px-4 py-1.5 rounded-md transition-all text-xs font-medium', currentTab === 'enrollment' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
-                            报课明细
-                        </button>
+                <div class="flex items-center gap-2">
+                    <!-- Tab Switcher -->
+                    <div :class="['hidden sm:flex segmented-control mr-4', 
+                                  currentTab === 'experience' ? 'tab-exp' : 
+                                  currentTab === 'enrollment' ? 'tab-enr' : 'tab-con']">
+                        <div class="indicator"></div>
+                        <button @click="currentTab = 'experience'" :class="{ active: currentTab === 'experience' }">体验数据</button>
+                        <button @click="currentTab = 'enrollment'" :class="{ active: currentTab === 'enrollment' }">业绩明细</button>
+                        <button @click="currentTab = 'consumption'" :class="{ active: currentTab === 'consumption' }">课消&出勤</button>
                     </div>
                     
-                    <a href="data-entry.html" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        工作数据
-                    </a>
-                    <a href="performance.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        绩效考核
-                    </a>
-                    <a href="salary-calculation.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        工资计算
-                    </a>
-                    <button @click="showImport = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        导入数据
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <a href="data-entry.html" title="工作数据" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </a>
+                        <a href="performance.html" title="绩效考核" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </a>
+                        <button @click="showImport = true" title="导入数据" class="ml-1 bg-blue-600 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 text-white p-2 rounded-xl transition-all duration-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
 
         <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8">
+            <!-- Global Filter Bar Removed from here -->
+
             <!-- Dashboard Content -->
             <div v-if="currentTab === 'experience'" class="space-y-8 animate-in fade-in duration-500">
                 <!-- KPI Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative group">
                         <div class="flex justify-between items-start mb-1">
-                            <p class="text-sm text-slate-500">本期体验学员数</p>
-                            <!-- Independent Filter Icon -->
-                            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <input v-if="chartFilters.expKpi.dateRange === 'thisMonth'" 
-                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                       class="text-[10px] bg-slate-50 border-none rounded py-0 px-1 focus:ring-0 cursor-pointer">
-                                <select v-model="chartFilters.expKpi.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-0 px-1 focus:ring-0">
-                                    <option value="thisMonth">本月</option>
-                                    <option value="thisYear">本年</option>
-                                </select>
-                            </div>
+                            <p class="text-sm text-slate-500">邀约人数</p>
                         </div>
-                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_students}}</h3>
-                        <div class="mt-2 text-xs text-green-600 flex items-center">
-                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"></path></svg>
-                            较上期 +12%
+                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_invited}}</h3>
+                        <div class="mt-2 text-xs text-slate-400">本期邀约学员总数</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-sm text-slate-500 mb-1">体验人数</p>
+                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_attended}}</h3>
+                        <div class="mt-2 text-xs text-blue-600 flex items-center justify-between">
+                            <span>到访率: {{kpis.exp_attend_rate}}%</span>
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <p class="text-sm text-slate-500 mb-1">累计体验学员数</p>
-                        <h3 class="text-3xl font-bold text-slate-900">{{kpis.exp_total}}</h3>
+                        <p class="text-sm text-slate-500 mb-1">已报课人数</p>
+                        <h3 class="text-3xl font-bold text-emerald-600">{{kpis.exp_enrolled}}</h3>
+                        <div class="mt-2 text-xs text-emerald-600">从体验数据转化的报课学员</div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <p class="text-sm text-slate-500 mb-1">体验课转化率</p>
+                        <p class="text-sm text-slate-500 mb-1">报课转化率</p>
                         <h3 class="text-3xl font-bold text-blue-600">{{kpis.exp_conv_rate}}%</h3>
                         <div class="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                             <div class="h-full bg-blue-600" :style="{width: kpis.exp_conv_rate + '%'}"></div>
@@ -125,15 +182,6 @@
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="font-bold">学员来源渠道</h4>
-                            <div class="flex items-center gap-2">
-                                <input v-if="chartFilters.source.dateRange === 'thisMonth'" 
-                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
-                                <select v-model="chartFilters.source.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
-                                    <option value="thisMonth">本月</option>
-                                    <option value="thisYear">本年</option>
-                                </select>
-                            </div>
                         </div>
                         <div id="sourceChart" class="chart-container"></div>
                     </div>
@@ -153,7 +201,7 @@
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
                         <div class="flex items-center justify-between mb-4">
-                            <h4 class="font-bold">体验课转化漏斗</h4>
+                            <h4 class="font-bold">体验转化漏斗</h4>
                             <div class="flex gap-2">
                                 <select v-model="chartFilters.funnel.teacher" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
                                     <option value="all">全部老师</option>
@@ -168,18 +216,59 @@
                 <!-- Teacher Stats -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-bold">体验课老师授课统计</h4>
-                        <div class="flex items-center gap-2">
-                            <input v-if="chartFilters.teacherExp.dateRange === 'thisMonth'" 
-                                   type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                   class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
-                            <select v-model="chartFilters.teacherExp.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
-                                <option value="thisMonth">本月</option>
-                                <option value="thisYear">本年</option>
-                            </select>
-                        </div>
+                        <h4 class="font-bold">体验老师转化统计</h4>
                     </div>
                     <div id="teacherExpChart" class="chart-container" style="height: 400px;"></div>
+                </div>
+
+                <!-- 体验明细数据表格 -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center cursor-pointer hover:bg-slate-100/50 transition-colors" @click="expTableExpanded = !expTableExpanded">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}体验明细
+                        </h3>
+                        <div class="flex items-center gap-4">
+                            <div class="flex gap-2" @click.stop>
+                                <input v-model="expSearch" type="text" placeholder="搜索学员/老师/状态..." class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-48">
+                            </div>
+                            <svg :class="['w-5 h-5 text-slate-400 transition-transform duration-300', expTableExpanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div v-show="expTableExpanded" class="overflow-x-auto max-h-[600px] overflow-y-auto animate-in slide-in-from-top-2 duration-300">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">学员姓名</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">年龄/性别</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">体验日期</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">邀约老师</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">体验老师</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">校区</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">状态</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(item, idx) in searchedExperienceDetails" :key="idx" class="hover:bg-slate-50/80 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-slate-700">{{item.学员姓名}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.年龄}} / {{item.性别}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.体验课时间}}</td>
+                                    <td class="px-4 py-3 text-slate-700">{{item.邀约老师}}</td>
+                                    <td class="px-4 py-3 text-slate-700">{{item.体验课老师}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.所在校区}}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="['px-2 py-0.5 rounded-full text-[10px]', 
+                                            item.状态 === '已报课' ? 'bg-emerald-50 text-emerald-600' : 
+                                            (item.状态 === '已体验' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500')]">
+                                            {{item.状态}}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -219,15 +308,6 @@
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="font-bold">报课属性占比</h4>
-                            <div class="flex items-center gap-2">
-                                <input v-if="chartFilters.enrType.dateRange === 'thisMonth'" 
-                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
-                                <select v-model="chartFilters.enrType.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
-                                    <option value="thisMonth">本月</option>
-                                    <option value="thisYear">本年</option>
-                                </select>
-                            </div>
                         </div>
                         <div id="enrTypeChart" class="chart-container"></div>
                     </div>
@@ -239,13 +319,6 @@
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="font-bold">业绩排行</h4>
                             <div class="flex items-center gap-2">
-                                <input v-if="chartFilters.ranking.dateRange === 'thisMonth'" 
-                                       type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                       class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
-                                <select v-model="chartFilters.ranking.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
-                                    <option value="thisMonth">本月</option>
-                                    <option value="thisYear">本年</option>
-                                </select>
                                 <select v-model="chartFilters.ranking.type" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
                                     <option value="campus">按校区</option>
                                     <option value="teacher">按老师</option>
@@ -266,35 +339,219 @@
                     </div>
                 </div>
 
-                <!-- New Row: Course Consumption -->
+                <!-- Campus Performance -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-bold">消课数据分析 (消课总额、课时及课消率)</h4>
-                        <div class="flex gap-2">
+                        <h4 class="font-bold">校区业绩分布</h4>
+                    </div>
+                    <div id="campusPerfChart" class="chart-container"></div>
+                </div>
+
+                <!-- 业绩明细数据表格 -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center cursor-pointer hover:bg-slate-100/50 transition-colors" @click="enrTableExpanded = !enrTableExpanded">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}业绩明细
+                        </h3>
+                        <div class="flex items-center gap-4">
+                            <div class="flex gap-2" @click.stop>
+                                <input v-model="enrSearch" type="text" placeholder="搜索学员/老师..." class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-48">
+                            </div>
+                            <svg :class="['w-5 h-5 text-slate-400 transition-transform duration-300', enrTableExpanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div v-show="enrTableExpanded" class="overflow-x-auto max-h-[600px] overflow-y-auto animate-in slide-in-from-top-2 duration-300">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">学员姓名</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">时间</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">属性</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">课时</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">实收</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">校区</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">归属人</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">归属金额</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(item, idx) in searchedEnrollmentDetails" :key="idx" class="hover:bg-slate-50/80 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-slate-700">{{item.学员姓名}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.报课时间}}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="['px-2 py-0.5 rounded-full text-[10px]', 
+                                            item.报课属性 === '续费' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600']">
+                                            {{item.报课属性}}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-600">{{item.报课课时}}</td>
+                                    <td class="px-4 py-3 font-semibold text-slate-900">¥{{item.实收金额.toLocaleString()}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.所在校区}}</td>
+                                    <td class="px-4 py-3 text-slate-700">{{item.业绩归属人}}</td>
+                                    <td class="px-4 py-3 font-semibold text-blue-600">¥{{item.归属业绩金额.toLocaleString()}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'consumption'" class="space-y-8 animate-in fade-in duration-500">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">总消课课时</p>
+                        <h3 class="text-xl font-bold text-slate-900">{{conKpis.total_hours.toFixed(1)}}</h3>
+                        <div class="mt-2 text-[10px] text-slate-400">学员消课总课时</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">消课总金额</p>
+                        <h3 class="text-xl font-bold text-blue-600">¥{{conKpis.total_amount.toLocaleString()}}</h3>
+                        <div class="mt-2 text-[10px] text-slate-400">消课课时总金额</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">一对一人次</p>
+                        <h3 class="text-xl font-bold text-blue-600">{{conKpis.one_on_one_count}}</h3>
+                        <div class="mt-2 text-[10px] text-slate-400">快速扣课计入次数</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">平均出勤率</p>
+                        <h3 class="text-xl font-bold text-emerald-600">{{conKpis.attendance_rate}}%</h3>
+                        <div class="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500" :style="{width: conKpis.attendance_rate + '%'}"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">请假率</p>
+                        <h3 class="text-xl font-bold text-amber-500">{{conKpis.leave_rate}}%</h3>
+                        <div class="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-amber-400" :style="{width: conKpis.leave_rate + '%'}"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-500 mb-1">缺勤率</p>
+                        <h3 class="text-xl font-bold text-rose-500">{{conKpis.absence_rate}}%</h3>
+                        <div class="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-rose-400" :style="{width: conKpis.absence_rate + '%'}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">老师课消排行</h4>
                             <select v-model="chartFilters.consumption.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
                                 <option value="all">全部校区</option>
                                 <option v-for="c in campusList" :value="c">{{c}}</option>
                             </select>
                         </div>
+                        <div id="teacherRankChart" class="chart-container"></div>
                     </div>
-                    <div id="consumptionChart" class="chart-container" style="height: 400px;"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
+                        <h4 class="font-bold mb-4">消课与出勤趋势</h4>
+                        <div id="trendChart" class="chart-container"></div>
+                    </div>
                 </div>
 
-                <!-- Campus Performance -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-bold">校区业绩对比</h4>
-                        <div class="flex items-center gap-2">
-                            <input v-if="chartFilters.campusPerf.dateRange === 'thisMonth'" 
-                                   type="month" v-model="currentMonth" min="2025-01" max="2026-12"
-                                   class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0 cursor-pointer">
-                            <select v-model="chartFilters.campusPerf.dateRange" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
-                                <option value="thisMonth">本月</option>
-                                <option value="thisYear">本年</option>
+                <!-- Charts Row 2 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">出勤状态分布</h4>
+                            <div class="text-[10px] text-slate-400">各类型人次占比</div>
+                        </div>
+                        <div id="compositionChart" class="chart-container"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold">老师出勤细节对比</h4>
+                            <select v-model="chartFilters.consumption.campus" class="text-[10px] bg-slate-50 border-none rounded py-1 px-2 focus:ring-0">
+                                <option value="all">全部校区</option>
+                                <option v-for="c in campusList" :value="c">{{c}}</option>
                             </select>
                         </div>
+                        <div id="attendanceChart" class="chart-container"></div>
                     </div>
-                    <div id="campusPerfChart" class="chart-container" style="height: 400px;"></div>
+                </div>
+
+                <!-- Detail Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center cursor-pointer hover:bg-slate-100/50 transition-colors" @click="conTableExpanded = !conTableExpanded">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}课消明细
+                        </h3>
+                        <div class="flex items-center gap-4">
+                            <div class="flex gap-2" @click.stop>
+                                <select v-model="chartFilters.consumption.campus" class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="all">全部校区</option>
+                                    <option v-for="c in campusList" :value="c">{{c}}</option>
+                                </select>
+                                <input v-model="conSearch" type="text" placeholder="搜索老师..." class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-48">
+                            </div>
+                            <svg :class="['w-5 h-5 text-slate-400 transition-transform duration-300', conTableExpanded ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div v-show="conTableExpanded" class="overflow-x-auto max-h-[500px] animate-in slide-in-from-top-2 duration-300">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th v-if="globalFilter.type === 'year'" class="px-4 py-3 font-semibold text-slate-600">月份</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">老师姓名</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">校区</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">消课课时</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">一对一人次</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">消课金额</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">出勤</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">请假</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">缺勤</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">补课</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">出勤率</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template v-for="(group, gIdx) in groupedConsumptionDetails" :key="group.month">
+                                    <tr v-if="globalFilter.type === 'year'" class="bg-slate-50/80 border-y border-slate-200/60">
+                                        <td colspan="11" class="px-4 py-2 font-bold text-blue-600 text-[11px] flex items-center gap-2">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            {{ group.month.split('-')[0] }}年{{ group.month.split('-')[1] }}月
+                                            <span class="text-[10px] font-normal text-slate-400 ml-2">(共 {{group.items.length}} 条记录)</span>
+                                        </td>
+                                    </tr>
+                                    <tr v-for="(item, idx) in group.items" :key="idx" class="hover:bg-slate-50 transition-colors">
+                                        <td v-if="globalFilter.type === 'year'" class="px-4 py-3 text-slate-400 font-medium">{{item.月份.split('-')[1]}}月</td>
+                                        <td class="px-4 py-3 font-medium text-slate-700">{{item.姓名}}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{item.校区}}</td>
+                                        <td class="px-4 py-3 text-slate-500 font-semibold">{{item.消课课时}}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{item.一对一人次}}</td>
+                                        <td class="px-4 py-3 text-slate-500 font-medium">¥{{(item.消课金额 || 0).toLocaleString()}}</td>
+                                        <td class="px-4 py-3 text-emerald-600 font-bold">{{item.出勤人次}}</td>
+                                        <td class="px-4 py-3 text-amber-600 font-medium">{{item.请假人次}}</td>
+                                        <td class="px-4 py-3 text-rose-600 font-medium">{{item.缺勤人次}}</td>
+                                        <td class="px-4 py-3 text-blue-600 font-medium">{{item.补课人次}}</td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center gap-2">
+                                                <span :class="[
+                                                    'px-2 py-0.5 rounded text-[10px] font-bold',
+                                                    ((item.出勤人次 / (item.出勤人次 + item.请假人次 + item.缺勤人次 || 1)) * 100) < 85 ? 'bg-rose-50 text-rose-600' : 
+                                                    ((item.出勤人次 / (item.出勤人次 + item.请假人次 + item.缺勤人次 || 1)) * 100) > 95 ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-600'
+                                                ]">
+                                                    {{ ((item.出勤人次 / (item.出勤人次 + item.请假人次 + item.缺勤人次 || 1)) * 100).toFixed(1) }}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
@@ -387,6 +644,10 @@
     </div>
 
     <!-- Application Script -->
+    <script src="data-2025.js"></script>
+    <script src="data-experience-2025.js"></script>
+    <script src="data-enrollment-2025.js"></script>
+    <script src="data-consumption-2025.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

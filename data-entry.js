@@ -103,6 +103,17 @@ const initApp = () => {
                     } catch (e) {
                         console.error('Failed to parse saved data:', e);
                     }
+                } else if (presetHistory && presetHistory[currentMonth.value] && presetHistory[currentMonth.value].length > 0) {
+                    // 如果本地无保存数据，则自动加载预设的系统/截图数据
+                    const preset = presetHistory[currentMonth.value][0];
+                    Object.keys(preset.data).forEach(key => {
+                        if (tableData[key]) {
+                            Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
+                        }
+                    });
+                    // 重新计算汇总行
+                    updateSummaryRow('小花老师');
+                    console.log(`自动加载了 ${currentMonth.value} 的预设数据`);
                 }
             };
 
@@ -168,10 +179,28 @@ const initApp = () => {
                 }
             };
 
+            // 预设的历史记录数据（2025年 1-12月）
+            const presetHistory = window.presetWorkHistory || {};
+
             // History Methods
             const loadHistoryRecords = () => {
                 const saved = localStorage.getItem(`history_work_data_${currentMonth.value}`);
-                historyRecords.value = saved ? JSON.parse(saved) : [];
+                let records = saved ? JSON.parse(saved) : [];
+                
+                // 合并预设记录
+                if (presetHistory[currentMonth.value]) {
+                    const preset = presetHistory[currentMonth.value];
+                    // 避免重复添加预设记录
+                    preset.forEach(p => {
+                        if (!records.some(r => r.id === p.id)) {
+                            records.push(p);
+                        }
+                    });
+                    // 按时间倒序排列
+                    records.sort((a, b) => b.timestamp - a.timestamp);
+                }
+                
+                historyRecords.value = records;
             };
 
             const saveHistoryRecord = (isReplace = false) => {
