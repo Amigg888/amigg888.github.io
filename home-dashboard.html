@@ -13,6 +13,20 @@
     <!-- Day.js -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
     
+    <!-- Data Sources 2025 -->
+    <script src="data-2025.js"></script>
+    <script src="data-experience-2025.js"></script>
+    <script src="data-consumption-2025.js"></script>
+
+    <!-- Data Sources 2026 -->
+    <script src="data-2026.js"></script>
+    <script src="data-experience-2026.js"></script>
+    <script src="data-consumption-2026.js"></script>
+    <script>
+        // 添加一个全局变量记录数据更新时间
+        window.ONLINE_SYNC_TIME = "2026-01-29 20:20"; // 这里可以通过脚本动态修改
+    </script>
+    
     <style>
         :root {
             --bg-color: #050a0f;
@@ -48,10 +62,19 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.5rem 2rem;
+            min-height: 80px;
             background: linear-gradient(180deg, rgba(0, 210, 255, 0.1) 0%, transparent 100%);
             border-bottom: 1px solid var(--border-color);
             margin-bottom: 1rem;
             position: relative;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
 
         .header::after {
@@ -178,14 +201,64 @@
         .rank-3 { background: #ffec3d; color: #000; }
         .rank-other { background: #3a7bd5; color: white; }
 
+        /* Announcement Animation */
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+        }
+
+        .marquee-content {
+            display: flex;
+            gap: 80px;
+            white-space: nowrap;
+            animation: marquee 15s linear infinite;
+        }
+
+        .marquee-content:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
         .chart-box {
             width: 100%;
-            height: 180px;
+            height: 140px;
+        }
+
+        .compact-card {
+            padding: 0.75rem !important;
+        }
+
+        .compact-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .fixed-kpi-card {
+            height: 110px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .kpi-value-center {
+            position: absolute;
+            left: 50%;
+            top: 55%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            text-align: center;
         }
 
         .main-chart-box {
             width: 100%;
-            height: 300px;
+            height: 240px;
         }
 
         [v-cloak] { display: none; }
@@ -200,29 +273,76 @@
                     <svg class="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     <span class="text-xs font-bold text-blue-300">返回仪表盘首页</span>
                 </a>
-                <div class="h-6 w-px bg-white/10 mx-2"></div>
-                <img src="https://img.icons8.com/fluency/48/000000/dashboard.png" class="w-6 h-6" alt="Logo">
-                <span class="text-sm font-bold text-blue-400">声度星主持</span>
             </div>
-            <h1 class="header-title">校区运营全景数据大屏</h1>
+            
+            <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+                <img src="img/logo.png" class="w-12 h-12 object-contain" alt="Logo">
+                <h1 class="header-title">声度星主持数据大屏</h1>
+            </div>
+
             <div class="flex items-center gap-4">
                 <!-- Time Range Filter -->
-                <div class="flex bg-blue-900/40 border border-blue-500/30 p-0.5 rounded-lg">
-                    <button v-for="t in ['year', 'quarter', 'month']" :key="t"
-                            @click="timeRange = t"
-                            :class="['px-3 py-1 rounded text-[10px] font-bold transition-all', timeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-blue-400 hover:text-blue-200']">
-                        {{ t === 'year' ? '年度' : t === 'quarter' ? '季度' : '月度' }}
-                    </button>
+                <div class="flex items-center gap-3">
+                    <!-- Primary Toggle -->
+                    <div class="flex bg-blue-900/40 border border-blue-500/30 p-0.5 rounded-lg shrink-0">
+                        <button v-for="t in ['year', 'quarter', 'month']" :key="t"
+                                @click="timeRange = t"
+                                :class="['px-3 py-1 rounded text-[10px] font-bold transition-all', timeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-blue-400 hover:text-blue-200']">
+                            {{ t === 'year' ? '年度' : t === 'quarter' ? '季度' : '月度' }}
+                        </button>
+                    </div>
+                    
+                    <!-- Secondary Filter (Inline Dropdown) -->
+                    <div class="bg-blue-900/40 border border-blue-500/30 px-2 py-1 rounded text-xs animate-in fade-in zoom-in duration-200 w-[120px] shrink-0 flex items-center justify-center">
+                        <!-- Year Selector (Always shown when timeRange is year) -->
+                        <select v-if="timeRange === 'year'" v-model="selectedYear" class="bg-transparent text-blue-300 outline-none cursor-pointer font-bold w-full text-center">
+                            <option value="2025">2025 年度</option>
+                            <option value="2026">2026 年度</option>
+                        </select>
+
+                        <!-- Quarter Selector (Includes Year) -->
+                        <select v-if="timeRange === 'quarter'" v-model="selectedQuarterValue" class="bg-transparent text-blue-300 outline-none cursor-pointer font-bold w-full text-center">
+                            <optgroup label="2025年">
+                                <option v-for="q in 4" :key="'2025-'+q" :value="'2025-'+q">25年 {{q}}季度</option>
+                            </optgroup>
+                            <optgroup label="2026年">
+                                <option v-for="q in 4" :key="'2026-'+q" :value="'2026-'+q">26年 {{q}}季度</option>
+                            </optgroup>
+                        </select>
+
+                        <!-- Month Selector (Includes Year) -->
+                        <select v-if="timeRange === 'month'" v-model="selectedMonthValue" class="bg-transparent text-blue-300 outline-none cursor-pointer font-bold w-full text-center">
+                            <optgroup label="2025年">
+                                <option v-for="m in 12" :key="'2025-'+m" :value="'2025-'+String(m).padStart(2, '0')">25年 {{m}}月</option>
+                            </optgroup>
+                            <optgroup label="2026年">
+                                <option v-for="m in 12" :key="'2026-'+m" :value="'2026-'+String(m).padStart(2, '0')">26年 {{m}}月</option>
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
-                <div class="bg-blue-900/40 border border-blue-500/30 px-3 py-1 rounded text-xs">
-                    <select v-model="selectedYear" class="bg-transparent text-blue-300 outline-none cursor-pointer">
-                        <option value="2025">2025年度</option>
-                        <option value="2024">2024年度</option>
-                    </select>
-                </div>
-                <div class="text-right min-w-[140px]">
-                    <div class="text-sm font-mono text-blue-300">{{ currentTime }}</div>
-                    <div class="text-[10px] text-slate-500">数据更新: {{ lastUpdateTime }}</div>
+                <div class="text-right flex flex-col justify-center">
+                    <div class="text-2xl font-mono text-blue-400 leading-none mb-1">{{ currentTime }}</div>
+                    <div class="flex items-center justify-end gap-1 text-slate-400">
+                        <button 
+                            @click="syncOnlineData" 
+                            :disabled="isSyncing"
+                            class="p-1 rounded-full transition-all hover:bg-blue-500/20 active:scale-95"
+                            :title="isSyncing ? '正在同步...' : '同步腾讯文档'"
+                        >
+                            <svg 
+                                class="w-3.5 h-3.5" 
+                                :class="isSyncing ? 'animate-spin text-blue-400' : 'text-slate-500 hover:text-blue-400'"
+                                xmlns="http://www.w3.org/2000/svg" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        <span class="text-[10px] font-mono">最近同步: {{ lastUpdateTime }}</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -231,214 +351,266 @@
         <main class="dashboard-grid">
             <!-- Left Column -->
             <div class="flex flex-col gap-3">
-                <!-- 在读学员概况 -->
-                <div class="glass-card">
-                    <div class="card-title justify-between">
-                        <span>在读学员概况</span>
-                        <span class="text-[10px] text-blue-500 font-mono">YoY: +12.5%</span>
+                <!-- 学员与转化概况 (在读 + 意向 + 试听) -->
+                <div class="glass-card compact-card flex flex-col gap-4" style="height: calc(100% - 0rem);">
+                    <!-- 在读学员部分 -->
+                    <div class="flex-1">
+                        <div class="card-title justify-between mb-2">
+                            <span>在读学员概况</span>
+                            <span class="text-[10px] text-blue-500 font-mono">YoY: +12.5%</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-1.5 relative group cursor-help">
+                                <div class="kpi-label whitespace-nowrap">在读</div>
+                                <div class="text-base font-bold text-blue-400 leading-tight">{{ kpis.active_students }}</div>
+                                <!-- Tooltip remains same -->
+                                <div class="absolute bottom-full left-0 mb-2 bg-slate-900/95 border border-blue-500/30 text-[10px] p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none shadow-xl min-w-[150px]">
+                                    <div v-for="(data, campus) in realCampusStats" :key="campus" class="mb-2 last:mb-0">
+                                        <div class="font-bold text-blue-400 border-b border-blue-500/30 mb-1 pb-1">{{ campus }} ({{ data.active }}人)</div>
+                                        <div v-for="t in data.teachers.active" class="flex justify-between gap-4 py-0.5">
+                                            <span>{{ t.name }}</span>
+                                            <span class="text-blue-300">{{ t.count }}人</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="kpi-label whitespace-nowrap">新增</div>
+                                <div class="text-base font-bold text-cyan-400 leading-tight">{{ kpis.new_enrollments }}</div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="kpi-label whitespace-nowrap">历史</div>
+                                <div class="text-base font-bold text-slate-400 leading-tight">{{ kpis.total_history }}</div>
+                            </div>
+                        </div>
+                        <div id="activeStudentChart" style="height: 80px; width: 100%;"></div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div class="relative group cursor-help">
-                            <div class="kpi-label">在读学员数</div>
-                            <div class="kpi-value text-blue-400">{{ kpis.active_students }}</div>
-                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">环比: +2.3%</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">新增报读</div>
-                            <div class="kpi-value text-cyan-400">{{ kpis.new_enrollments }}</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">历史学员</div>
-                            <div class="kpi-value text-slate-400">{{ kpis.total_history }}</div>
-                        </div>
-                    </div>
-                    <div id="activeStudentChart" class="chart-box mt-2"></div>
-                </div>
 
-                <!-- 意向学员概况 -->
-                <div class="glass-card">
-                    <div class="card-title justify-between">
-                        <span>意向学员概况</span>
-                        <div class="flex gap-2">
+                    <!-- 意向学员部分 -->
+                    <div class="flex-1 pt-3 border-t border-white/5">
+                        <div class="card-title justify-between mb-2">
+                            <span>意向学员概况</span>
                             <span class="text-[10px] px-1 bg-blue-500/20 text-blue-400 rounded">转化率: {{ kpis.lead_to_exp_rate }}%</span>
                         </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <div class="kpi-label whitespace-nowrap">意向</div>
+                                <div class="text-base font-bold text-blue-400 leading-tight">{{ kpis.leads_count }}</div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="kpi-label whitespace-nowrap">转化</div>
+                                <div class="text-base font-bold text-blue-400 leading-tight">{{ kpis.new_conversion }}</div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="kpi-label whitespace-nowrap">新增</div>
+                                <div class="text-base font-bold text-cyan-400 leading-tight">{{ kpis.new_leads }}</div>
+                            </div>
+                        </div>
+                        <div id="leadsChart" style="height: 80px; width: 100%;"></div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <div class="kpi-label">意向学员数</div>
-                            <div class="kpi-value text-blue-400">{{ kpis.leads_count }}</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">新增意向</div>
-                            <div class="kpi-value text-cyan-400">{{ kpis.new_leads }}</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">跟进记录</div>
-                            <div class="kpi-value text-slate-400">{{ kpis.follow_ups }}</div>
-                        </div>
-                    </div>
-                    <div id="leadsChart" class="chart-box mt-2"></div>
-                </div>
 
-                <!-- 试听转化概况 -->
-                <div class="glass-card flex-grow">
-                    <div class="card-title">试听转化概况</div>
-                    <div id="conversionFunnel" class="chart-box" style="height: 220px;"></div>
-                    <div class="mt-2 space-y-1">
-                        <div class="flex justify-between text-xs">
-                            <span class="text-slate-400">试听邀约数</span>
-                            <span class="text-white">{{ kpis.exp_invited }}</span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-slate-400">试听完成数</span>
-                            <span class="text-white">{{ kpis.exp_attended }}</span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-slate-400">试听转化数</span>
-                            <span class="text-white">{{ kpis.exp_enrolled }}</span>
+                    <!-- 试听转化概况 -->
+                    <div class="flex-1 pt-3 border-t border-white/5">
+                        <div class="card-title mb-2">试听转化概况</div>
+                        <div id="conversionFunnel" style="height: 120px; width: 100%;"></div>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
+                            <div class="text-center">
+                                <div class="text-[9px] text-slate-500">邀约</div>
+                                <div class="text-xs font-bold text-white">{{ kpis.exp_invited }}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-[9px] text-slate-500">到访</div>
+                                <div class="text-xs font-bold text-white">{{ kpis.exp_attended }}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-[9px] text-slate-500">转化</div>
+                                <div class="text-xs font-bold text-white">{{ kpis.exp_enrolled }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Center Column -->
-            <div class="flex flex-col gap-3">
-                <!-- Top Message Bar -->
-                <div class="glass-card py-2 bg-blue-900/20 border-blue-500/30">
-                    <div class="flex items-center gap-3">
-                        <span class="animate-pulse">📢</span>
-                        <div class="text-sm overflow-hidden whitespace-nowrap">
-                            <span class="text-blue-300">喜报！{{ latestEnrollmentMsg }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Main KPIs -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="glass-card bg-gradient-to-br from-blue-900/40 to-transparent">
-                        <div class="card-title justify-between">
-                            <span>总收入 (CNY)</span>
-                            <span class="text-[10px] text-green-400">环比 +8.2% ↑</span>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <div class="text-3xl font-bold text-white">¥{{ formatNumber(kpis.total_revenue) }}</div>
-                            <div class="text-right">
-                                <div class="text-[10px] text-blue-400">订单: {{ kpis.order_count }}</div>
-                                <div class="text-[10px] text-slate-500">客单价: ¥{{ formatNumber(kpis.total_revenue / (kpis.order_count || 1)) }}</div>
+            <div class="flex flex-col gap-3 h-full">
+                <!-- Top content container to push bottom elements down -->
+                <div class="flex flex-col gap-3 flex-1">
+                    <!-- Top Message Bar -->
+                    <div class="glass-card py-2 bg-blue-900/20 border-blue-500/30">
+                        <div class="flex items-center gap-3">
+                            <span class="animate-pulse shrink-0">📢</span>
+                            <div class="marquee-container">
+                                <div class="marquee-content text-blue-300 text-sm font-bold">
+                                    <!-- 复制两份以实现无缝滚动 -->
+                                    <div class="flex gap-20 pr-20">
+                                        <span v-for="(msg, index) in latestEnrollmentMsgs" :key="'a-'+index">
+                                            {{ msg }}
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-20 pr-20">
+                                        <span v-for="(msg, index) in latestEnrollmentMsgs" :key="'b-'+index">
+                                            {{ msg }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="glass-card bg-gradient-to-br from-purple-900/40 to-transparent">
-                        <div class="card-title justify-between">
-                            <span>总课消人次</span>
-                            <span class="text-[10px] text-purple-400">完成率 92%</span>
+
+                    <!-- Main KPIs -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass-card fixed-kpi-card bg-gradient-to-br from-blue-900/40 to-transparent flex flex-col items-center justify-center">
+                            <!-- Title & Icon Centered -->
+                            <div class="card-title mb-1 !before:hidden flex items-center gap-1.5">
+                                <div class="w-1 h-3.5 bg-blue-400 shadow-[0_0_8px_#60a5fa] rounded-full"></div>
+                                <span>总业绩 (CNY)</span>
+                            </div>
+                            <!-- Value Centered with Title -->
+                            <div class="text-3xl font-bold text-white mb-2">¥{{ formatNumber(kpis.total_revenue) }}</div>
+                            
+                            <!-- Absolute Stats -->
+                            <div class="absolute top-2 right-3 flex flex-col items-end">
+                                <span :class="['text-[9px]', kpis.revenue_mom >= 0 ? 'text-green-400' : 'text-red-400']">
+                                    环比 {{ kpis.revenue_mom >= 0 ? '+' : '' }}{{ kpis.revenue_mom }}% {{ kpis.revenue_mom >= 0 ? '↑' : '↓' }}
+                                </span>
+                                <span v-if="timeRange !== 'year'" :class="['text-[9px]', kpis.revenue_yoy >= 0 ? 'text-blue-400' : 'text-red-400']">
+                                    同比 {{ kpis.revenue_yoy >= 0 ? '+' : '' }}{{ kpis.revenue_yoy }}% {{ kpis.revenue_yoy >= 0 ? '↑' : '↓' }}
+                                </span>
+                            </div>
+                            <div class="absolute bottom-2 right-3 text-right">
+                                <div class="text-[9px] text-blue-400">订单: {{ kpis.order_count }}</div>
+                                <div class="text-[9px] text-slate-500">客单价: ¥{{ formatNumber(kpis.total_revenue / (kpis.order_count || 1)) }}</div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-end">
-                            <div class="text-3xl font-bold text-white">{{ formatNumber(kpis.total_consumption_count) }}</div>
-                            <div class="text-right">
-                                <div class="text-[10px] text-purple-400">金额: ¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
-                                <div class="text-[10px] text-slate-500">人均消课: {{ (kpis.total_consumption_count / (kpis.active_students || 1)).toFixed(1) }}</div>
+                        <div class="glass-card fixed-kpi-card bg-gradient-to-br from-purple-900/40 to-transparent flex flex-col items-center justify-center">
+                            <!-- Title & Icon Centered -->
+                            <div class="card-title mb-1 !before:hidden flex items-center gap-1.5">
+                                <div class="w-1 h-3.5 bg-purple-400 shadow-[0_0_8px_#a855f7] rounded-full"></div>
+                                <span>总课消人次</span>
+                            </div>
+                            <!-- Value Centered with Title -->
+                            <div class="text-3xl font-bold text-white mb-2">{{ formatNumber(kpis.total_consumption_count) }}</div>
+
+                            <!-- Absolute Stats -->
+                            <div class="absolute top-2 right-3">
+                                <span class="text-[10px] text-purple-400">完成率 {{ (kpis.total_consumption_amount / 50000 * 100).toFixed(0) }}%</span>
+                            </div>
+                            <div class="absolute bottom-2 right-3 text-right">
+                                <div class="text-[9px] text-purple-400">金额: ¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
+                                <div class="text-[9px] text-slate-500">人均课费: ¥{{ formatNumber(kpis.total_consumption_amount / (kpis.total_consumption_count || 1)) }}</div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Revenue Trend -->
+                    <div class="glass-card flex-1 flex flex-col">
+                        <div class="card-title">机构总业绩趋势</div>
+                        <div id="revenueTrendChart" class="flex-1 w-full min-h-[180px]"></div>
+                    </div>
                 </div>
 
-                <!-- Revenue Trend -->
-                <div class="glass-card">
-                    <div class="card-title">机构总收入趋势</div>
-                    <div id="revenueTrendChart" class="main-chart-box"></div>
-                </div>
-
-                <!-- Campus Rankings & Distribution -->
-                <div class="grid grid-cols-2 gap-3 flex-grow">
-                    <div class="glass-card">
-                        <div class="card-title">校区收入排名</div>
-                        <div class="space-y-2 mt-2">
-                            <div v-for="(item, index) in campusRankings" :key="index" class="ranking-item">
-                                <span :class="['rank-num', index < 3 ? 'rank-' + (index + 1) : 'rank-other']">{{ index + 1 }}</span>
-                                <span class="text-xs flex-grow truncate">{{ item.name }}</span>
-                                <span class="text-xs font-mono text-blue-300">¥{{ formatNumber(item.value) }}</span>
+                <!-- Teacher Rankings & Distribution (Aligned at bottom) -->
+                <div class="grid grid-cols-2 gap-3 mt-auto" style="height: 240px;">
+                    <div class="glass-card compact-card flex flex-col">
+                        <div class="card-title">老师业绩排名</div>
+                        <div class="flex-1 space-y-2 mt-1 overflow-y-auto scrollbar-hide">
+                            <div v-for="(item, index) in teacherRevenueRankings" :key="index" class="flex items-center gap-3 py-1 border-b border-white/5 last:border-0">
+                                <span :class="['rank-num shrink-0', index < 3 ? 'rank-' + (index + 1) : 'rank-other']" style="width:16px; height:16px; font-size:9px">{{ index + 1 }}</span>
+                                <div class="flex-grow min-w-0">
+                                    <div class="flex justify-between text-[11px] mb-0.5">
+                                        <span class="text-slate-200 truncate">{{ item.name }}</span>
+                                        <span class="text-blue-400 font-mono font-bold">¥{{ formatNumber(item.value) }}</span>
+                                    </div>
+                                    <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-blue-500/50" :style="{ width: (item.value / (teacherRevenueRankings[0].value || 1) * 100) + '%' }"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="glass-card">
+                    <div class="glass-card compact-card flex flex-col">
                         <div class="card-title">新签续报占比</div>
-                        <div id="enrollmentRatioChart" class="chart-box" style="height: 180px;"></div>
+                        <div id="enrollmentRatioChart" class="flex-1 w-full"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Right Column -->
-            <div class="flex flex-col gap-3 right-col">
-                <!-- 课消排名 -->
-                <div class="glass-card">
-                    <div class="card-title">校区课消排名</div>
-                    <div class="mt-2">
-                        <table class="w-full text-left text-[10px]">
-                            <thead class="text-slate-500 border-b border-white/10">
-                                <tr>
-                                    <th class="pb-1">校区名</th>
-                                    <th class="pb-1 text-right">课消人次</th>
-                                    <th class="pb-1 text-right">课消金额</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-slate-300">
-                                <tr v-for="(item, index) in consumptionRankings" :key="index" class="border-b border-white/5">
-                                    <td class="py-2 flex items-center gap-2">
-                                        <span :class="['rank-num', index < 3 ? 'rank-' + (index + 1) : 'rank-other']" style="width:14px; height:14px; font-size:9px">{{ index + 1 }}</span>
-                                        <span class="truncate w-20">{{ item.name }}</span>
-                                    </td>
-                                    <td class="py-2 text-right font-mono">{{ formatNumber(item.count) }}</td>
-                                    <td class="py-2 text-right font-mono text-blue-400">{{ formatNumber(item.amount) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <div class="flex flex-col gap-3 right-col h-full">
+                <!-- Top content container to push bottom elements down -->
+                <div class="flex flex-col gap-3 flex-1">
+                    <!-- 老师课消排名 -->
+                    <div class="glass-card flex-1 flex flex-col min-h-[180px]">
+                        <div class="card-title">老师课消排名</div>
+                        <div class="mt-2 flex-1 overflow-y-auto scrollbar-hide">
+                            <table class="w-full text-left text-[10px]">
+                                <thead class="text-slate-500 border-b border-white/10 sticky top-0 bg-[#101827] z-10">
+                                    <tr>
+                                        <th class="pb-1">老师</th>
+                                        <th class="pb-1 text-right">课消人次</th>
+                                        <th class="pb-1 text-right">课消金额</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-slate-300">
+                                    <tr v-for="(item, index) in teacherConsumptionRankings" :key="index" class="border-b border-white/5">
+                                        <td class="py-2 flex items-center gap-2">
+                                            <span :class="['rank-num', index < 3 ? 'rank-' + (index + 1) : 'rank-other']" style="width:14px; height:14px; font-size:9px">{{ index + 1 }}</span>
+                                            <span class="truncate w-20">{{ item.name }}</span>
+                                        </td>
+                                        <td class="py-2 text-right font-mono">{{ formatNumber(item.count) }}</td>
+                                        <td class="py-2 text-right font-mono text-blue-400">{{ formatNumber(item.amount) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 课消概况 -->
+                    <div class="glass-card">
+                        <div class="card-title">课消概况</div>
+                        <div class="grid grid-cols-3 gap-2 text-center mb-2">
+                            <div>
+                                <div class="kpi-label">报名总学费</div>
+                                <div class="kpi-value text-sm">¥{{ formatNumber(kpis.total_revenue) }}</div>
+                            </div>
+                            <div>
+                                <div class="kpi-label">课消金额</div>
+                                <div class="kpi-value text-sm text-cyan-400">¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
+                            </div>
+                            <div>
+                                <div class="kpi-label">剩余学费</div>
+                                <div class="kpi-value text-sm text-orange-400">¥{{ formatNumber(kpis.total_revenue - kpis.total_consumption_amount) }}</div>
+                            </div>
+                        </div>
+                        <div id="consumptionChart" class="chart-box" style="height: 100px;"></div>
                     </div>
                 </div>
 
-                <!-- 课消概况 -->
-                <div class="glass-card">
-                    <div class="card-title">课消概况</div>
-                    <div class="grid grid-cols-3 gap-2 text-center mb-2">
-                        <div>
-                            <div class="kpi-label">报名总学费</div>
-                            <div class="kpi-value text-sm">¥{{ formatNumber(kpis.total_revenue) }}</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">课消金额</div>
-                            <div class="kpi-value text-sm text-cyan-400">¥{{ formatNumber(kpis.total_consumption_amount) }}</div>
-                        </div>
-                        <div>
-                            <div class="kpi-label">剩余学费</div>
-                            <div class="kpi-value text-sm text-orange-400">¥{{ formatNumber(kpis.total_revenue - kpis.total_consumption_amount) }}</div>
-                        </div>
+                <!-- 老师出勤统计 (Flexible height to show all) -->
+                <div class="glass-card compact-card mt-auto flex flex-col min-h-[240px]">
+                    <div class="card-title justify-between mb-2">
+                        <span>上课出勤统计</span>
+                        <span class="text-[9px] text-slate-500">出勤率 = 出勤 / 应到</span>
                     </div>
-                    <div id="consumptionChart" class="chart-box"></div>
-                </div>
-
-                <!-- 家校概况 -->
-                <div class="glass-card flex-grow">
-                    <div class="card-title">家校概况</div>
-                    <div class="grid grid-cols-2 gap-4 mt-4">
-                        <div class="text-center">
-                            <div id="bindRateChart" style="height: 80px;"></div>
-                            <div class="kpi-label mt-1">公众号绑定率</div>
-                            <div class="text-xs text-white">36%</div>
+                    <div class="flex-1 space-y-2">
+                        <div v-for="(item, index) in teacherAttendanceRankings" :key="index" class="relative pb-1 border-b border-slate-800/30 last:border-0">
+                            <div class="flex justify-between text-[10px] mb-0.5">
+                                <span class="text-slate-200 font-medium">{{ item.name }}</span>
+                                <span class="text-cyan-400 font-mono font-bold">{{ item.rate }}%</span>
+                            </div>
+                            <div class="w-full h-1 bg-slate-800/50 rounded-full overflow-hidden">
+                                <div 
+                                    class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-1000 shadow-[0_0_8px_rgba(0,210,255,0.4)]"
+                                    :style="{ width: item.rate + '%' }"
+                                ></div>
+                            </div>
+                            <div class="flex justify-between text-[8px] text-slate-500 mt-0.5">
+                                <span>出勤: <span class="text-slate-400">{{ item.attended }}</span></span>
+                                <span>应到: <span class="text-slate-400">{{ item.total }}</span></span>
+                            </div>
                         </div>
-                        <div class="text-center">
-                            <div id="commentRateChart" style="height: 80px;"></div>
-                            <div class="kpi-label mt-1">老师点评审</div>
-                            <div class="text-xs text-white">72%</div>
-                        </div>
-                        <div class="text-center">
-                            <div id="taskRateChart" style="height: 80px;"></div>
-                            <div class="kpi-label mt-1">课后任务发布率</div>
-                            <div class="text-xs text-white">82%</div>
-                        </div>
-                        <div class="text-center">
-                            <div id="noticeRateChart" style="height: 80px;"></div>
-                            <div class="kpi-label mt-1">通知公告阅读率</div>
-                            <div class="text-xs text-white">48%</div>
+                        <div v-if="teacherAttendanceRankings.length === 0" class="text-center text-slate-500 text-[10px] py-10">
+                            暂无出勤数据
                         </div>
                     </div>
                 </div>
@@ -446,10 +618,7 @@
         </main>
     </div>
 
-    <!-- Data dependencies -->
-    <script src="data-2025.js"></script>
-    <script src="data-experience-2025.js"></script>
-    <script src="data-consumption-2025.js"></script>
+    <!-- Main Dashboard Script -->
     <script src="home-dashboard.js"></script>
 </body>
 </html>
