@@ -9,16 +9,32 @@ createApp({
         const expTableExpanded = ref(false); // 体验课明细表格折叠状态，默认折叠
         const conSearch = ref('');
         const conTableExpanded = ref(false); // 课消明细表格折叠状态，默认折叠
-        const enrollmentDetails = ref(window.enrollmentDetails2025 || []);
-        const experienceDetails = ref(window.experienceDetails2025 || []);
-        const consumptionDetails = ref(window.consumptionData2025 || []);
+        const enrollmentDetails = ref([...(window.enrollmentDetails2025 || []), ...(window.enrollmentDetails2026 || [])]);
+        const experienceDetails = ref([...(window.experienceDetails2025 || []), ...(window.experienceDetails2026 || [])]);
+        const consumptionDetails = ref([...(window.consumptionData2025 || []), ...(window.consumptionData2026 || [])]);
 
         // Global Date Filter
         const globalFilter = reactive({
             type: 'year', // 'year' or 'month'
-            year: '2025',
-            month: '2025-01'
+            year: '2026',
+            month: '2026-01'
         });
+
+        const showDatePicker = ref(false);
+        const pickerTempYear = ref(globalFilter.year);
+
+        const selectYear = (year) => {
+            globalFilter.type = 'year';
+            globalFilter.year = year;
+            showDatePicker.value = false;
+        };
+
+        const selectMonth = (year, month) => {
+            globalFilter.type = 'month';
+            globalFilter.month = `${year}-${String(month).padStart(2, '0')}`;
+            globalFilter.year = year;
+            showDatePicker.value = false;
+        };
 
         const filteredEnrollmentDetails = computed(() => {
             let data = enrollmentDetails.value;
@@ -295,6 +311,8 @@ createApp({
                 const sorted = Object.entries(teacherData).sort((a, b) => b[1] - a[1]);
                 
                 teacherRankChart.setOption({
+                    animationDuration: 2000,
+                    animationDurationUpdate: 1200,
                     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                     xAxis: { type: 'value' },
@@ -330,6 +348,8 @@ createApp({
                 const months = Object.keys(monthlyData).sort();
 
                 trendChart.setOption({
+                    animationDuration: 2000,
+                    animationDurationUpdate: 1200,
                     tooltip: { 
                         trigger: 'axis',
                         axisPointer: { type: 'cross' }
@@ -374,6 +394,8 @@ createApp({
                 const makeup = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.补课人次 || 0), 0);
 
                 compositionChart.setOption({
+                    animationDuration: 2000,
+                    animationDurationUpdate: 1200,
                     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
                     legend: { bottom: '0', left: 'center', textStyle: { fontSize: 10 } },
                     series: [{
@@ -408,6 +430,8 @@ createApp({
                 const teachers = Object.keys(teacherAttendance);
 
                 attendanceChart.setOption({
+                    animationDuration: 2000,
+                    animationDurationUpdate: 1200,
                     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                     legend: { data: ['出勤', '请假', '缺勤', '补课'], bottom: 0 },
                     xAxis: { type: 'category', data: teachers },
@@ -450,6 +474,8 @@ createApp({
             const sortedGrades = Object.entries(gradeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
             gradeChart.setOption({
+                animationDuration: 2000,
+                animationDurationUpdate: 1200,
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                 grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                 xAxis: { type: 'value', splitLine: { show: false } },
@@ -638,6 +664,8 @@ createApp({
             });
 
             revenueTrendChart.setOption({
+                animationDuration: 2500,
+                animationDurationUpdate: 1500,
                 tooltip: { trigger: 'axis' },
                 grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                 xAxis: { type: 'category', boundaryGap: false, data: months.map(m => parseInt(m) + '月') },
@@ -939,6 +967,10 @@ createApp({
             showImport.value = false;
             initCharts();
             window.addEventListener('resize', handleResize);
+            // 初始化 Lucide 图标
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         });
 
         return {
@@ -947,7 +979,7 @@ createApp({
             enrollmentDetails, experienceDetails, consumptionDetails,
             filteredEnrollmentDetails, filteredExperienceDetails, filteredConsumptionDetails,
             searchedEnrollmentDetails, searchedExperienceDetails, searchedConsumptionDetails,
-            globalFilter, showImport, importing, importProgress, parsedData, chartFilters,
+            globalFilter, showDatePicker, pickerTempYear, selectYear, selectMonth, showImport, importing, importProgress, parsedData, chartFilters,
             campusList, teacherList, kpis, conKpis, currentMonth, saveStatus,
             handleExcelUpload, handleImageUpload, clearParsedData, confirmImport,
             addEmptyRow, removeRow

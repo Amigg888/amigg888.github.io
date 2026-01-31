@@ -9,9 +9,13 @@ const initApp = () => {
 
     createApp({
         setup() {
-            const isAuthorized = ref(sessionStorage.getItem('salary_authorized') === 'true');
+            const isAuthorized = ref(true); // Now handled by auth-guard.js
             const inputPassword = ref('');
             const passwordError = ref(false);
+
+            // User Info for RBAC
+            const currentUser = ref(JSON.parse(localStorage.getItem('user')) || { role: 'admin' });
+            const isMobileMenuOpen = ref(false);
 
             const checkPassword = () => {
                 if (inputPassword.value === '888') {
@@ -29,6 +33,14 @@ const initApp = () => {
 
             const tableData = reactive({});
             const currentMonth = ref(localStorage.getItem('selected_month') || '2026-01');
+            const showDatePicker = ref(false);
+            const pickerTempYear = ref(currentMonth.value.split('-')[0]);
+
+            const selectMonth = (year, month) => {
+                currentMonth.value = `${year}-${String(month).padStart(2, '0')}`;
+                showDatePicker.value = false;
+            };
+
             const saveStatus = ref(''); // '', 'saving', 'saved', 'error'
             
             // 历史记录相关
@@ -157,8 +169,33 @@ const initApp = () => {
                 }
 
                 if (workData) {
+                    const teachersList = ['xh_la', 'xh_ch', 'tz', 'yz', 'xc'];
+                    const teacherDisplayNames = {
+                        'xh_la': '小花老师(临安)',
+                        'xh_ch': '小花老师(青山)',
+                        'tz': '桃子老师',
+                        'yz': '柚子老师',
+                        'xc': '小草老师'
+                    };
+
+                    // Filter for teachers
+                    let filteredTeachers = teachersList;
+                    if (currentUser.value.role === 'teacher') {
+                        // Match by teacher name prefix
+                        filteredTeachers = teachersList.filter(t => 
+                            teacherDisplayNames[t].includes(currentUser.value.name)
+                        );
+                    }
+
+                    // Remove other teachers if they exist in tableData (cleanup)
+                    Object.keys(tableData).forEach(key => {
+                        if (key !== '小花老师' && !filteredTeachers.includes(key) && !['xh_la', 'xh_ch'].includes(key)) {
+                             delete tableData[key];
+                        }
+                    });
+
                     // Initialize salary data based on work data
-                    ['xh_la', 'xh_ch', 'tz', 'yz', 'xc'].forEach(id => {
+                    filteredTeachers.forEach(id => {
                         const work = workData[id] || { name: id, demoInvites: 0, demoEnrollments: 0, attendance: 0, totalSales: 0 };
                         const baseSalary = baseSalaryMap[id] || 0;
                         
@@ -344,6 +381,9 @@ const initApp = () => {
                 columns,
                 tableData,
                 currentMonth,
+                showDatePicker,
+                pickerTempYear,
+                selectMonth,
                 saveStatus,
                 formatMoney,
                 exportToCSV,
@@ -354,7 +394,8 @@ const initApp = () => {
                 saveHistoryRecord,
                 loadVersion,
                 deleteVersion,
-                handleAdjustmentChange
+                handleAdjustmentChange,
+                isMobileMenuOpen
             };
         }
     }).mount('#app');

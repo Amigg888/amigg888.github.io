@@ -2,10 +2,28 @@ const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
 
 createApp({
     setup() {
-        const teachers = ['小花老师', '桃子老师', '柚子老师'];
+        const teachers = ref(['小花老师', '桃子老师', '柚子老师', '小草老师']);
         const teacherName = ref('小花老师');
+
+        // RBAC logic
+        onMounted(() => {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (user && user.role === 'teacher') {
+                teachers.value = [user.name];
+                teacherName.value = user.name;
+            }
+        });
         const currentMonth = ref(localStorage.getItem('selected_month') || '2026-01');
+        const showDatePicker = ref(false);
+        const pickerTempYear = ref(currentMonth.value.split('-')[0]);
+
+        const selectMonth = (year, month) => {
+            currentMonth.value = `${year}-${String(month).padStart(2, '0')}`;
+            showDatePicker.value = false;
+        };
+
         const saveStatus = ref(''); // 'saving', 'saved', 'error'
+        const isMobileMenuOpen = ref(false);
         
         // History Management
         const showHistory = ref(false);
@@ -452,9 +470,10 @@ createApp({
             fieldsMap, calculationSteps, totalScore, performanceLevel,
             performanceCoefficient, levelColor, performanceStandards,
             validateAndCalculate, saveEvaluation, exportReport, resetEvaluation,
-            scrollTo,
+            scrollTo, isMobileMenuOpen,
+            showDatePicker, pickerTempYear, selectMonth,
             // History
-            showHistory, historyRecords, historyNote, saveHistoryRecord, loadVersion, deleteVersion
+            showHistory, historyRecords, historyNote, currentVersionId, saveHistoryRecord, loadVersion, deleteVersion
         };
     }
 }).mount('#app');

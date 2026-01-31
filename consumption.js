@@ -2,12 +2,28 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
     setup() {
-        const consumptionData = window.consumptionData2025 || [];
+        const consumptionData = [...(window.consumptionData2025 || []), ...(window.consumptionData2026 || [])];
         const globalFilter = reactive({
             type: 'year',
-            year: '2025',
-            month: '2025-12'
+            year: '2026',
+            month: '2026-01'
         });
+
+        const showDatePicker = ref(false);
+        const pickerTempYear = ref(globalFilter.year);
+
+        const selectYear = (year) => {
+            globalFilter.type = 'year';
+            globalFilter.year = year;
+            showDatePicker.value = false;
+        };
+
+        const selectMonth = (year, month) => {
+            globalFilter.type = 'month';
+            globalFilter.month = `${year}-${String(month).padStart(2, '0')}`;
+            globalFilter.year = year;
+            showDatePicker.value = false;
+        };
 
         const searchQuery = ref('');
         const charts = {};
@@ -172,9 +188,14 @@ createApp({
 
         return {
             globalFilter,
+            showDatePicker,
+            pickerTempYear,
+            selectYear,
+            selectMonth,
             searchQuery,
             filteredTableData,
-            kpis
+            kpis,
+            initCharts
         };
     }
 }).mount('#app');

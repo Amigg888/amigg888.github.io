@@ -4,23 +4,136 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>声度星主持 - 课消&出勤数据</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="lib/tailwind.js"></script>
+    <script src="lib/vue.global.js"></script>
+    <script src="lib/echarts.min.js"></script>
+    <script src="auth-guard.js"></script>
     <style>
         [v-cloak] { display: none; }
         .chart-container { min-height: 350px; width: 100%; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Mobile Adaptations */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 0.75rem !important;
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+            }
+            .main-content {
+                padding: 1rem !important;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.75rem !important;
+            }
+            .kpi-card {
+                padding: 1rem !important;
+            }
+            .kpi-card h3 {
+                font-size: 1.5rem !important;
+            }
+            .chart-row {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Date Picker Popover */
+        .datepicker-popover {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 0.5rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 280px;
+            z-index: 100;
+            padding: 1.25rem;
+            animation: popover-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (min-width: 768px) {
+            .datepicker-popover {
+                left: auto;
+                right: 0;
+                transform: none;
+            }
+        }
+
+        @keyframes popover-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .month-btn {
+            padding: 0.6rem 0.4rem;
+            text-align: center;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            color: #64748b;
+        }
+
+        .month-btn:hover {
+            background: #f1f5f9;
+            color: #2563eb;
+        }
+
+        .month-btn.active {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+        }
+
+        .year-tab-container {
+            display: flex;
+            background: #f1f5f9;
+            padding: 3px;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .year-tab {
+            flex: 1;
+            padding: 6px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+
+        .year-tab.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
     <div id="app" v-cloak class="min-h-screen flex flex-col">
         <!-- Top Navigation / Filter Bar -->
         <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-2 md:px-8">
-            <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-                <div class="flex items-center gap-4 md:gap-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 header-content">
+                <div class="flex items-center justify-between gap-4 md:gap-8 w-full md:w-auto">
                     <!-- Title & Logo -->
                     <div class="flex items-center gap-2 shrink-0">
                         <div class="bg-blue-600 p-1.5 rounded-lg">
@@ -29,36 +142,52 @@
                         <h1 class="text-base font-bold tracking-tight whitespace-nowrap">声度星主持仪表盘</h1>
                     </div>
 
-                    <!-- Global Filter -->
-                    <div class="flex items-center gap-2 bg-slate-100/80 px-2 py-1 rounded-xl border border-slate-200/60 shadow-sm backdrop-blur-sm">
-                        <div class="flex bg-slate-200/50 p-0.5 rounded-lg">
-                            <button @click="globalFilter.type = 'year'" 
-                                    :class="['px-3 py-1 rounded-md text-[10px] font-bold transition-all duration-300', globalFilter.type === 'year' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
-                                年度
-                            </button>
-                            <button @click="globalFilter.type = 'month'" 
-                                    :class="['px-3 py-1 rounded-md text-[10px] font-bold transition-all duration-300', globalFilter.type === 'month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700']">
-                                月度
-                            </button>
-                        </div>
-                        
-                        <div class="h-4 w-px bg-slate-300/50 mx-1"></div>
+                    <!-- Unified Date Picker -->
+                    <div class="relative">
+                        <button @click="showDatePicker = !showDatePicker" 
+                                class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 md:px-4 md:py-2 rounded-xl border border-slate-200 transition-all duration-200 group">
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-xs font-bold text-slate-700">
+                                {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month.split('-')[0] + '年' + globalFilter.month.split('-')[1] + '月' }}
+                            </span>
+                            <svg :class="['w-3 h-3 text-slate-400 transition-transform duration-200', showDatePicker ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
 
-                        <div v-if="globalFilter.type === 'year'" class="flex items-center">
-                            <select v-model="globalFilter.year" class="bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none cursor-pointer focus:ring-0 py-0 pr-6">
-                                <option value="2025">2025年</option>
-                            </select>
-                        </div>
-                        
-                        <div v-else class="flex items-center">
-                            <input type="month" v-model="globalFilter.month" min="2025-01" max="2025-12"
-                                   class="bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none cursor-pointer focus:ring-0 py-0 w-24">
+                        <!-- Date Picker Popover -->
+                        <div v-if="showDatePicker" v-cloak class="datepicker-popover">
+                            <div class="year-tab-container">
+                                <div v-for="y in ['2025', '2026']" :key="y" 
+                                     @click="pickerTempYear = y"
+                                     :class="['year-tab', pickerTempYear === y ? 'active' : '']">
+                                    {{y}}年
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 gap-2">
+                                <button @click="selectYear(pickerTempYear)"
+                                        :class="['w-full py-2 rounded-lg text-xs font-bold transition-all border', 
+                                                 globalFilter.type === 'year' && globalFilter.year === pickerTempYear ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100']">
+                                    查看整年数据
+                                </button>
+                            </div>
+
+                            <div class="month-grid">
+                                <button v-for="m in 12" :key="m"
+                                        @click="selectMonth(pickerTempYear, m)"
+                                        :class="['month-btn', globalFilter.type === 'month' && globalFilter.month === pickerTempYear + '-' + String(m).padStart(2, '0') ? 'active' : '']">
+                                    {{m}}月
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-between gap-2 w-full md:w-auto">
+                    <div class="flex items-center gap-1.5 ml-auto">
                         <a href="index.html" title="返回主仪表盘" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                         </a>
@@ -73,25 +202,25 @@
             </div>
         </header>
 
-        <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
+        <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 main-content">
             <!-- KPI Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 kpi-grid">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 kpi-card">
                     <p class="text-sm text-slate-500 mb-1">总消课课时</p>
                     <h3 class="text-3xl font-bold text-slate-900">{{kpis.total_hours.toFixed(1)}}</h3>
                     <div class="mt-2 text-xs text-slate-400">学员消课总课时</div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 kpi-card">
                     <p class="text-sm text-slate-500 mb-1">消课总金额</p>
                     <h3 class="text-3xl font-bold text-indigo-600">¥{{kpis.total_amount.toLocaleString()}}</h3>
                     <div class="mt-2 text-xs text-slate-400">消课课时总金额</div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 kpi-card">
                     <p class="text-sm text-slate-500 mb-1">一对一人次</p>
                     <h3 class="text-3xl font-bold text-blue-600">{{kpis.one_on_one_count}}</h3>
                     <div class="mt-2 text-xs text-slate-400">快速扣课计入次数</div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 kpi-card">
                     <p class="text-sm text-slate-500 mb-1">平均出勤率</p>
                     <h3 class="text-3xl font-bold text-emerald-600">{{kpis.attendance_rate}}%</h3>
                     <div class="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -101,7 +230,7 @@
             </div>
 
             <!-- Charts Row 1 -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 chart-row">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h4 class="font-bold mb-4">老师课消排行</h4>
                     <div id="teacherRankChart" class="chart-container"></div>
@@ -166,6 +295,7 @@
     </div>
 
     <script src="data-consumption-2025.js"></script>
+    <script src="data-consumption-2026.js"></script>
     <script src="consumption.js"></script>
 </body>
 </html>

@@ -12,6 +12,14 @@ const initApp = () => {
             const teachers = ['小花老师', '桃子老师', '柚子老师', '小草老师'];
             const expandedRows = reactive({ '小花老师': true });
             const currentMonth = ref(localStorage.getItem('selected_month') || '2026-01');
+            const showDatePicker = ref(false);
+            const pickerTempYear = ref(currentMonth.value.split('-')[0]);
+
+            const selectMonth = (year, month) => {
+                currentMonth.value = `${year}-${String(month).padStart(2, '0')}`;
+                showDatePicker.value = false;
+            };
+
             const saveStatus = ref(''); // '', 'saving', 'saved', 'error'
             
             // History Management
@@ -312,6 +320,10 @@ const initApp = () => {
                 showHistory.value = false;
                 initData();
                 loadHistoryRecords();
+                // 初始化 Lucide 图标
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
             });
 
             return {
@@ -321,6 +333,9 @@ const initApp = () => {
                 grandTotal,
                 teachingColumns,
                 currentMonth,
+                showDatePicker,
+                pickerTempYear,
+                selectMonth,
                 saveStatus,
                 showHistory,
                 historyRecords,
@@ -333,7 +348,8 @@ const initApp = () => {
                 loadVersion,
                 deleteVersion,
                 calculateRate,
-                calculateAttendanceRate
+                calculateAttendanceRate,
+                isMobileMenuOpen: ref(false)
             };
         }
     }).mount('#app');

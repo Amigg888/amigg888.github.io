@@ -198,11 +198,13 @@ async def sync_online_docs(url):
             
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
             import re
+            # 同时更新同步时间和脚本版本号，防止浏览器缓存
             new_html = re.sub(r'window\.ONLINE_SYNC_TIME = ".*?";', f'window.ONLINE_SYNC_TIME = "{now_str}";', html_content)
+            new_html = re.sub(r'\.js\?v=.*?"', f'.js?v={now_str}"', new_html)
             
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(new_html)
-            print(f"已更新 HTML 中的同步时间为: {now_str}")
+            print(f"已更新 HTML 中的同步时间与版本号: {now_str}")
         except Exception as e:
             print(f"更新同步时间失败: {e}")
 

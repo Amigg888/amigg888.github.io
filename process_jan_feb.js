@@ -13,12 +13,12 @@ function loadData(filename) {
     return global.data;
 }
 
-const enrollmentData = loadData('data-2025.js');
-const experienceData = loadData('data-experience-2025.js');
-const consumptionData = loadData('data-consumption-2025.js');
+const enrollmentData = [...loadData('data-2025.js'), ...loadData('data-2026.js')];
+const experienceData = [...loadData('data-experience-2025.js'), ...loadData('data-experience-2026.js')];
+const consumptionData = [...loadData('data-consumption-2025.js'), ...loadData('data-consumption-2026.js')];
 
 const teachers = ['小花老师', '桃子老师', '柚子老师', '小草老师', '杨老师', '琪琪老师'];
-const months = ['2025-01', '2025-02'];
+const months = ['2025-01', '2025-02', '2026-01', '2026-02'];
 
 const results = {};
 
