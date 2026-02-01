@@ -56,22 +56,22 @@ createApp({
         // --- 学生数据处理逻辑 ---
         const rawStudentData = ref([]);
         
+        // 加载学生数据
         const loadStudentData = async () => {
+            // 优先从 window.studentData 加载（由 student-data.js 提供，解决 GitHub Pages 不支持 json 的问题）
+            if (window.studentData && Array.isArray(window.studentData)) {
+                rawStudentData.value = window.studentData;
+                console.log('从全局变量加载学员数据:', rawStudentData.value.length, '人');
+                return;
+            }
+
             try {
-                // 首先尝试从全局变量读取（GitHub Pages 模式）
-                if (window.studentData && Array.isArray(window.studentData)) {
-                    rawStudentData.value = window.studentData;
-                    console.log('从全局变量加载学员数据:', rawStudentData.value.length, '人');
-                    return;
-                }
-                
-                // 如果没有全局变量，再尝试 fetch（本地模式）
                 const response = await fetch('student_data.json');
                 if (response.ok) {
                     rawStudentData.value = await response.json();
                     console.log('从 JSON 加载学员数据:', rawStudentData.value.length, '人');
                 } else {
-                    console.warn('未找到学员数据源');
+                    console.warn('未找到学员数据源 (student_data.json)');
                 }
             } catch (e) {
                 console.error('加载学员数据失败:', e);
