@@ -58,13 +58,20 @@ createApp({
         
         const loadStudentData = async () => {
             try {
-                // 加载本地处理好的学员数据
+                // 首先尝试从全局变量读取（GitHub Pages 模式）
+                if (window.studentData && Array.isArray(window.studentData)) {
+                    rawStudentData.value = window.studentData;
+                    console.log('从全局变量加载学员数据:', rawStudentData.value.length, '人');
+                    return;
+                }
+                
+                // 如果没有全局变量，再尝试 fetch（本地模式）
                 const response = await fetch('student_data.json');
                 if (response.ok) {
                     rawStudentData.value = await response.json();
-                    console.log('成功加载学员数据:', rawStudentData.value.length, '人');
+                    console.log('从 JSON 加载学员数据:', rawStudentData.value.length, '人');
                 } else {
-                    console.warn('未找到 student_data.json，使用预设空数据');
+                    console.warn('未找到学员数据源');
                 }
             } catch (e) {
                 console.error('加载学员数据失败:', e);
