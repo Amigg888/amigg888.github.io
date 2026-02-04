@@ -432,12 +432,15 @@ createApp({
                         .reduce((sum, item) => sum + (Number(item.归属业绩金额) || 0), 0);
                 });
 
-                // 计算累计实际和累计目标
-                let cumulativeSum = 0;
-                const cumulativeActualPoints = revenueDataPoints.map(v => {
-                    cumulativeSum += v;
-                    return cumulativeSum;
-                });
+                // 如果是月份视图，直接展示每日业绩，不使用累计值
+                const isMonthView = range === 'month';
+                const seriesData = isMonthView ? revenueDataPoints : (() => {
+                    let cumulativeSum = 0;
+                    return revenueDataPoints.map(v => {
+                        cumulativeSum += v;
+                        return cumulativeSum;
+                    });
+                })();
 
                 const totalPeriodTarget = range === 'year' ? MONTHLY_REVENUE_TARGET * 12 : 
                                         range === 'quarter' ? MONTHLY_REVENUE_TARGET * 3 : 
@@ -464,16 +467,18 @@ createApp({
                                         </div>`;
                             });
                             
-                            // 计算进度百分比
-                            const actual = cumulativeActualPoints[params[0].dataIndex];
-                            const target = cumulativeTargetPoints[params[0].dataIndex];
-                            const percent = ((actual / target) * 100).toFixed(2);
-                            const colorClass = actual >= target ? 'text-emerald-400' : 'text-orange-400';
-                            
-                            res += `<div class="mt-2 pt-2 border-t border-white/10 flex justify-between gap-8">
-                                        <span class="text-slate-400">总体进度:</span>
-                                        <span class="${colorClass} font-mono font-bold">${percent}%</span>
-                                    </div>`;
+                            // 仅在非月份视图（累计视图）显示总体进度
+                            if (!isMonthView) {
+                                const actual = seriesData[params[0].dataIndex];
+                                const target = cumulativeTargetPoints[params[0].dataIndex];
+                                const percent = ((actual / target) * 100).toFixed(2);
+                                const colorClass = actual >= target ? 'text-emerald-400' : 'text-orange-400';
+                                
+                                res += `<div class="mt-2 pt-2 border-t border-white/10 flex justify-between gap-8">
+                                            <span class="text-slate-400">总体进度:</span>
+                                            <span class="${colorClass} font-mono font-bold">${percent}%</span>
+                                        </div>`;
+                            }
                             return res;
                         }
                     },
@@ -492,70 +497,56 @@ createApp({
                         type: 'category', 
                         data: xAxisLabels, 
                         axisLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
-                        axisLabel: { color: '#64748b', fontSize: 10, margin: 15 },
+                        axisLabel: { 
+                            color: '#64748b', 
+                            fontSize: 10, 
+                            margin: 15,
+                            interval: isMonthView ? 1 : 0 // 月份视图每隔一个显示一个标签，避免拥挤
+                        },
                         axisTick: { show: false }
                     },
                     yAxis: [
                         { 
                             type: 'value', 
-                            name: '单期业绩',
-                            nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, -30] },
-                            axisLine: { show: false }, 
-                            axisLabel: { color: '#64748b', fontSize: 10, formatter: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'k' : v }, 
-                            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)', type: 'dashed' } } 
-                        },
-                        { 
-                            type: 'value', 
-                            name: '累计进度',
-                            nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, -30, 0, 0] },
-                            axisLine: { show: false }, 
-                            axisLabel: { color: '#64748b', fontSize: 10, formatter: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'k' : v }, 
-                            splitLine: { show: false } 
+                            name: isMonthView ? '当日实收' : '累计实收',
+                            nameTextStyle: { color: '#64748b', fontSize: 9, align: 'right', padding: [0, 0, 10, 0] },
+                            axisLabel: { color: '#64748b', fontSize: 9 }, 
+                            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.02)', type: 'dashed' } }
                         }
                     ],
                     series: [
                         {
-                            name: '实际业绩',
-                            data: revenueDataPoints,
-                            type: 'bar',
-                            barWidth: '25%',
-                            itemStyle: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                    { offset: 0, color: '#00d2ff' },
-                                    { offset: 1, color: 'rgba(0, 210, 255, 0.1)' }
-                                ]),
-                                borderRadius: [4, 4, 0, 0]
+                            name: isMonthView ? '当日实收' : '累计实收',
+                            type: isMonthView ? 'bar' : 'line', // 月份视图用柱状图，更清晰
+                            data: seriesData,
+                            barWidth: isMonthView ? '60%' : undefined,
+                            smooth: !isMonthView,
+                            symbol: isMonthView ? 'none' : 'circle',
+                            symbolSize: 6,
+                            itemStyle: { 
+                                color: isMonthView ? 
+                                    new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: '#00d2ff' },
+                                        { offset: 1, color: 'rgba(0, 210, 255, 0.1)' }
+                                    ]) : '#00d2ff',
+                                borderRadius: isMonthView ? [4, 4, 0, 0] : 0
                             },
-                            emphasis: {
-                                itemStyle: {
-                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        { offset: 0, color: '#00fbff' },
-                                        { offset: 1, color: 'rgba(0, 210, 255, 0.3)' }
-                                    ])
-                                }
+                            lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(0, 210, 255, 0.3)' },
+                            areaStyle: isMonthView ? null : {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(0, 210, 255, 0.2)' },
+                                    { offset: 1, color: 'transparent' }
+                                ])
                             }
                         },
                         {
-                            name: '累计实际',
-                            data: cumulativeActualPoints,
+                            name: isMonthView ? '平均目标' : '累计目标',
                             type: 'line',
-                            yAxisIndex: 1,
-                            smooth: true,
-                            symbol: 'circle',
-                            symbolSize: 8,
-                            showSymbol: false,
-                            itemStyle: { color: '#34d399', borderWidth: 2, borderColor: '#0f172a' },
-                            lineStyle: { width: 3, shadowBlur: 15, shadowColor: 'rgba(52, 211, 153, 0.4)' },
-                            emphasis: { showSymbol: true }
-                        },
-                        {
-                            name: '累计目标',
-                            data: cumulativeTargetPoints,
-                            type: 'line',
-                            yAxisIndex: 1,
+                            data: isMonthView ? dateFilterPrefixes.map(() => Math.round(totalPeriodTarget / dateFilterPrefixes.length)) : cumulativeTargetPoints,
                             smooth: true,
                             symbol: 'none',
-                            lineStyle: { width: 2, type: 'dashed', color: 'rgba(239, 68, 68, 0.3)' }
+                            lineStyle: { color: 'rgba(255, 255, 255, 0.2)', width: 1, type: 'dashed' },
+                            z: 1
                         }
                     ]
                 });
