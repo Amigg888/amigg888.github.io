@@ -9,6 +9,13 @@ const initApp = () => {
 
     createApp({
         setup() {
+            const normalizeTeacherName = (name) => {
+                if (!name) return '未知老师';
+                if (name === '许鹤丽') return '桃子老师';
+                if (name === '许俊梅') return '小花老师';
+                return name;
+            };
+
             const teachers = ['小花老师', '桃子老师', '柚子老师', '小草老师'];
             const expandedRows = reactive({ '小花老师': true });
             const currentMonth = ref(localStorage.getItem('selected_month') || '2026-01');
@@ -30,23 +37,23 @@ const initApp = () => {
 
             // Column definitions
             const columns = [
-                { key: 'name', label: '姓名', type: 'text', readonly: true, width: '120px' },
-                { key: 'demoInvites', label: '试听课邀约人数', type: 'number' },
-                { key: 'demoAttendees', label: '试听课上课人数', type: 'number' },
-                { key: 'demoEnrollments', label: '试听课报课人数', type: 'number' },
-                { key: 'demoRate', label: '试听转化率', type: 'formula', formula: (row) => calculateRate(row.demoEnrollments, row.demoAttendees) },
-                { key: 'regularHours', label: '常规课消课时', type: 'number' },
-                { key: 'oneOnOneAttendees', label: '一对一人次', type: 'number' },
-                { key: 'oneOnOneAmount', label: '一对一消课金额', type: 'number', decimals: 2 },
-                { key: 'newStudents', label: '新签学员数', type: 'number', decimals: 1 },
+                { key: 'name', label: '姓名', type: 'text', readonly: true, width: '100px' },
+                { key: 'demoInvites', label: '试听课邀约', type: 'number' },
+                { key: 'demoAttendees', label: '试听课上课', type: 'number' },
+                { key: 'demoEnrollments', label: '试听课报课', type: 'number' },
+                { key: 'demoRate', label: '转化率', type: 'formula', formula: (row) => calculateRate(row.demoEnrollments, row.demoAttendees) },
+                { key: 'regularHours', label: '常规消课', type: 'number' },
+                { key: 'oneOnOneAttendees', label: '1对1人次', type: 'number' },
+                { key: 'oneOnOneAmount', label: '1对1金额', type: 'number', decimals: 2 },
+                { key: 'newStudents', label: '新签人数', type: 'number', decimals: 1 },
                 { key: 'newSales', label: '新签业绩', type: 'number', decimals: 2 },
-                { key: 'renewalStudents', label: '续费学员数', type: 'number', decimals: 1 },
+                { key: 'renewalStudents', label: '续费人数', type: 'number', decimals: 1 },
                 { key: 'renewalSales', label: '续费业绩', type: 'number', decimals: 2 },
                 { key: 'totalSales', label: '总业绩', type: 'formula', formula: (row) => (Number(row.newSales || 0) + Number(row.renewalSales || 0)).toFixed(2) },
-                { key: 'attendance', label: '出勤人次', type: 'number' },
-                { key: 'absence', label: '缺勤人次', type: 'number' },
-                { key: 'leave', label: '请假人次', type: 'number' },
-                { key: 'makeup', label: '补课人次', type: 'number' },
+                { key: 'attendance', label: '出勤', type: 'number' },
+                { key: 'absence', label: '缺勤', type: 'number' },
+                { key: 'leave', label: '请假', type: 'number' },
+                { key: 'makeup', label: '补课', type: 'number' },
                 { key: 'attendanceRate', label: '出勤率', type: 'formula', formula: (row) => calculateAttendanceRate(row.attendance, row.absence, row.leave) }
             ];
 
@@ -78,6 +85,86 @@ const initApp = () => {
             };
 
             const tableData = reactive({});
+
+            const syncFromGlobalData = () => {
+                const year = currentMonth.value.split('-')[0];
+                const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
+                const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
+                const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
+
+                // Map of IDs to their filters
+                const idConfig = {
+                    'xh_la': { name: '小花老师', campus: '临安校区' },
+                    'xh_ch': { name: '小花老师', campus: '昌化校区' },
+                    'tz': { name: '桃子老师', campus: null },
+                    'yz': { name: '柚子老师', campus: null },
+                    'xc': { name: '小草老师', campus: null }
+                };
+
+                Object.entries(idConfig).forEach(([id, config]) => {
+                    const row = tableData[id];
+                    if (!row) return;
+
+                    // 1. Consumption Sync
+                    const cRecords = consumptionData.filter(d => 
+                        normalizeTeacherName(d.姓名) === config.name && 
+                        d.月份 === currentMonth.value &&
+                        (!config.campus || d.校区 === config.campus)
+                    );
+
+                    if (cRecords.length > 0) {
+                        row.regularHours = cRecords.reduce((sum, r) => sum + (r.消课课时 || 0), 0);
+                        row.oneOnOneAttendees = cRecords.reduce((sum, r) => sum + (r.一对一人次 || 0), 0);
+                        row.oneOnOneAmount = cRecords.reduce((sum, r) => sum + (r.一对一金额 || 0), 0);
+                        row.attendance = cRecords.reduce((sum, r) => sum + (r.出勤人次 || 0), 0);
+                        row.absence = cRecords.reduce((sum, r) => sum + (r.缺勤人次 || 0), 0);
+                        row.leave = cRecords.reduce((sum, r) => sum + (r.请假人次 || 0), 0);
+                        row.makeup = cRecords.reduce((sum, r) => sum + (r.补课人次 || r.缺课已补 || 0), 0);
+                    }
+
+                    // 2. Experience Sync
+                    // 试听邀约归属邀约老师
+                    const inviteRecords = experienceData.filter(d => 
+                        normalizeTeacherName(d.邀约老师) === config.name && 
+                        d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
+                        (!config.campus || d.所在校区 === config.campus)
+                    );
+                    if (inviteRecords.length > 0) {
+                        row.demoInvites = inviteRecords.length;
+                    }
+
+                    // 试听课上课和转化归属上课老师
+                    const teachingRecords = experienceData.filter(d => 
+                        normalizeTeacherName(d.体验课老师) === config.name && 
+                        d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
+                        (!config.campus || d.所在校区 === config.campus)
+                    );
+                    if (teachingRecords.length > 0) {
+                        row.demoAttendees = teachingRecords.filter(d => d.状态 === '已体验' || d.状态 === '已报课').length;
+                        row.demoEnrollments = teachingRecords.filter(d => d.状态 === '已报课').length;
+                    }
+
+                    // 3. Enrollment Sync
+                    const enRecords = enrollmentData.filter(d => {
+                        const matchTeacher = normalizeTeacherName(d.业绩归属人) === config.name;
+                        const matchMonth = d.报课时间 && d.报课时间.startsWith(currentMonth.value);
+                        const matchCampus = !config.campus || d.所在校区 === config.campus;
+                        return matchTeacher && matchMonth && matchCampus;
+                    });
+
+                    if (enRecords.length > 0) {
+                        row.newStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报')).length;
+                        row.newSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报'))
+                                                .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
+                        row.renewalStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费')).length;
+                        row.renewalSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费'))
+                                                  .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
+                    }
+                });
+
+                updateSummaryRow('小花老师');
+                saveToLocal();
+            };
 
             // Initialize tableData from localStorage or initialData
             const initData = () => {
@@ -123,6 +210,11 @@ const initApp = () => {
                     updateSummaryRow('小花老师');
                     console.log(`自动加载了 ${currentMonth.value} 的预设数据`);
                 }
+
+                // If it's Jan 2026, always try to sync from global data to ensure attendance is populated
+                if (currentMonth.value === '2026-01') {
+                    syncFromGlobalData();
+                }
             };
 
             const createEmptyRow = (name, id, parent = null, isTeachingDisabled = false) => {
@@ -156,7 +248,13 @@ const initApp = () => {
                 
                 columns.forEach(col => {
                     if (col.type === 'number') {
-                        result[col.key] = rowsToSum.reduce((sum, row) => sum + Number(row[col.key] || 0), 0);
+                        result[col.key] = rowsToSum.reduce((sum, row) => {
+                            // 如果该列对该老师是禁用的（显示为 /），则不计入汇总
+                            if (row.isTeachingDisabled && teachingColumns.includes(col.key)) {
+                                return sum;
+                            }
+                            return sum + Number(row[col.key] || 0);
+                        }, 0);
                     }
                 });
                 return result;
@@ -274,47 +372,6 @@ const initApp = () => {
                 loadHistoryRecords();
             });
 
-            const exportToCSV = () => {
-                if (typeof dayjs === 'undefined') {
-                    console.error('Day.js 库未加载，无法导出。');
-                    saveStatus.value = 'error';
-                    setTimeout(() => { saveStatus.value = ''; }, 2000);
-                    return;
-                }
-                let csv = '\uFEFF'; // BOM for Excel
-                csv += columns.map(c => c.label).join(',') + '\n';
-                
-                const rows = [];
-                // Add rows in order using IDs
-                ['小花老师', 'xh_la', 'xh_ch', 'tz', 'yz', 'xc'].forEach(id => {
-                    const row = tableData[id];
-                    if (!row) return;
-                    const rowData = columns.map(col => {
-                        if (col.type === 'formula') return col.formula(row);
-                        if (row.isTeachingDisabled && teachingColumns.includes(col.key)) return '/';
-                        if (col.decimals !== undefined) return Number(row[col.key] || 0).toFixed(col.decimals);
-                        return row[col.key];
-                    });
-                    rows.push(rowData.join(','));
-                });
-                
-                // Add Grand Total
-                const totalData = columns.map(col => {
-                    if (col.type === 'formula') return col.formula(grandTotal.value);
-                    if (col.key === 'name') return '汇总';
-                    if (col.decimals !== undefined) return Number(grandTotal.value[col.key] || 0).toFixed(col.decimals);
-                    return grandTotal.value[col.key];
-                });
-                rows.push(totalData.join(','));
-
-                csv += rows.join('\n');
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `每月工作数据明细_${dayjs().format('YYYYMMDD')}.csv`;
-                link.click();
-            };
-
             onMounted(() => {
                 // 确保初始化时 Modal 是关闭的
                 showHistory.value = false;
@@ -342,8 +399,8 @@ const initApp = () => {
                 historyNote,
                 currentVersionId,
                 handleInputChange,
-                exportToCSV,
                 saveToLocal,
+                syncFromGlobalData,
                 saveHistoryRecord,
                 loadVersion,
                 deleteVersion,

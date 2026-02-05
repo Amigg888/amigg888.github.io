@@ -10,8 +10,9 @@
     <!-- Auth Guard -->
     <script src="auth-guard.js"></script>
     
-    <!-- Lucide Icons -->
+    <!-- Libraries -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
     <script>
         // Check if Vue is loaded
@@ -24,9 +25,9 @@
     <style>
         [v-cloak] { display: none; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .data-table th { white-space: nowrap; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; text-align: center; }
-        .data-table td { padding: 8px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; text-align: center; }
-        .input-cell { width: 80px; text-align: center; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; transition: all 0.2s; background: transparent; font-weight: 600; color: #1e293b; }
+        .data-table th { white-space: nowrap; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.02em; padding: 10px 4px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; text-align: center; }
+        .data-table td { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; font-size: 12px; text-align: center; }
+        .input-cell { width: 65px; text-align: center; border: 1px solid transparent; border-radius: 4px; padding: 4px 2px; transition: all 0.2s; background: transparent; font-weight: 600; color: #1e293b; font-size: 12px; }
         .input-cell:hover:not(:disabled) { border-color: #cbd5e1; background: #fff; }
         .input-cell:focus { border-color: #3b82f6; background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         .input-cell:disabled { color: #94a3b8; cursor: not-allowed; font-weight: normal; }
@@ -137,7 +138,7 @@
 <body class="bg-slate-50 text-slate-900 font-sans">
     <div id="app" v-cloak class="min-h-screen flex">
         <!-- Sidebar Navigation -->
-        <aside :class="['w-52 bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 h-screen z-50', isMobileMenuOpen ? 'mobile-active' : '']">
+        <aside :class="['w-48 bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 h-screen z-50', isMobileMenuOpen ? 'mobile-active' : '']">
             <div class="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
                     <div class="bg-amber-500 p-1.5 rounded-lg shrink-0">
@@ -179,7 +180,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-grow flex flex-col min-w-0 ml-52 relative">
+        <main class="flex-grow flex flex-col min-w-0 ml-48 relative">
             <!-- Mobile Header -->
             <div class="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
                 <button @click="isMobileMenuOpen = true" class="p-2 -ml-2 text-slate-600">
@@ -228,7 +229,14 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between md:justify-end gap-4">
+                <div class="flex items-center justify-between md:justify-end gap-3">
+                    <!-- Sync Button -->
+                    <button @click="syncFromGlobalData" class="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">同步系统数据</span>
+                        <span class="sm:hidden">同步</span>
+                    </button>
+
                     <!-- History Button -->
                     <button @click="showHistory = true" class="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
                         <i data-lucide="history" class="w-4 h-4"></i>
@@ -257,7 +265,7 @@
             </header>
 
             <!-- Table Section -->
-            <div class="p-8">
+            <div class="p-4 lg:p-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="table-container">
                         <table class="data-table w-full text-left border-collapse">
@@ -481,7 +489,13 @@
         </div>
     </div>
 
-    <script src="preset-data.js"></script>
-    <script src="data-entry.js"></script>
+    <script src="data-consumption-2025.js"></script>
+     <script src="data-consumption-2026.js"></script>
+     <script src="data-experience-2025.js"></script>
+     <script src="data-experience-2026.js"></script>
+     <script src="data-2025.js"></script>
+     <script src="data-2026.js"></script>
+     <script src="preset-data.js"></script>
+     <script src="data-entry.js"></script>
 </body>
 </html>

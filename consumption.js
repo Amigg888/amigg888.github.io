@@ -2,6 +2,13 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
     setup() {
+        const normalizeTeacherName = (name) => {
+            if (!name) return '未知老师';
+            if (name === '许鹤丽') return '桃子老师';
+            if (name === '许俊梅') return '小花老师';
+            return name;
+        };
+
         const consumptionData = [...(window.consumptionData2025 || []), ...(window.consumptionData2026 || [])];
         const globalFilter = reactive({
             type: 'year',
@@ -43,7 +50,7 @@ createApp({
             let data = filteredData.value;
             if (!searchQuery.value) return data;
             const s = searchQuery.value.toLowerCase();
-            return data.filter(item => item.姓名.toLowerCase().includes(s));
+            return data.filter(item => normalizeTeacherName(item.姓名).toLowerCase().includes(s));
         });
 
         // KPI calculations
@@ -77,7 +84,8 @@ createApp({
             if (teacherRankChart) {
                 const teacherData = {};
                 filteredData.value.forEach(item => {
-                    teacherData[item.姓名] = (teacherData[item.姓名] || 0) + (item.消课课时 || 0);
+                    const name = normalizeTeacherName(item.姓名);
+                    teacherData[name] = (teacherData[name] || 0) + (item.消课课时 || 0);
                 });
                 const sorted = Object.entries(teacherData).sort((a, b) => b[1] - a[1]);
                 
@@ -151,12 +159,13 @@ createApp({
             if (attendanceChart) {
                 const teacherAttendance = {};
                 filteredData.value.forEach(item => {
-                    if (!teacherAttendance[item.姓名]) {
-                        teacherAttendance[item.姓名] = { attendance: 0, leave: 0, absence: 0 };
+                    const name = normalizeTeacherName(item.姓名);
+                    if (!teacherAttendance[name]) {
+                        teacherAttendance[name] = { attendance: 0, leave: 0, absence: 0 };
                     }
-                    teacherAttendance[item.姓名].attendance += item.出勤人次;
-                    teacherAttendance[item.姓名].leave += item.请假人次;
-                    teacherAttendance[item.姓名].absence += item.缺勤人次;
+                    teacherAttendance[name].attendance += item.出勤人次;
+                    teacherAttendance[name].leave += item.请假人次;
+                    teacherAttendance[name].absence += item.缺勤人次;
                 });
                 const teachers = Object.keys(teacherAttendance);
 

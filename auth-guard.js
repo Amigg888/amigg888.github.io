@@ -110,7 +110,7 @@
                     // 尝试通知后端退出
                     try {
                         const API_HOST = window.location.hostname;
-                        fetch(`http://${API_HOST}:5001/logout`, { 
+                        fetch(`http://${API_HOST}:3001/logout`, { 
                             method: 'POST',
                             credentials: 'include'
                         }).catch(e => console.warn('后端退出请求失败:', e));

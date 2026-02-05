@@ -379,7 +379,8 @@
                             <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                                 <tr>
                                     <th class="px-4 py-3 font-semibold text-slate-600">学员姓名</th>
-                                    <th class="px-4 py-3 font-semibold text-slate-600">年龄/性别</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">年级/性别</th>
+                                    <th class="px-4 py-3 font-semibold text-slate-600">学员来源</th>
                                     <th class="px-4 py-3 font-semibold text-slate-600">体验日期</th>
                                     <th class="px-4 py-3 font-semibold text-slate-600">邀约老师</th>
                                     <th class="px-4 py-3 font-semibold text-slate-600">体验老师</th>
@@ -390,7 +391,8 @@
                             <tbody class="divide-y divide-slate-100">
                                 <tr v-for="(item, idx) in searchedExperienceDetails" :key="idx" class="hover:bg-slate-50/80 transition-colors">
                                     <td class="px-4 py-3 font-medium text-slate-700">{{item.学员姓名}}</td>
-                                    <td class="px-4 py-3 text-slate-500">{{item.年龄}} / {{item.性别}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.年级 || item.年龄}} / {{item.性别 || '未知'}}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{item.学员来源 || '未知'}}</td>
                                     <td class="px-4 py-3 text-slate-500">{{item.体验课时间}}</td>
                                     <td class="px-4 py-3 text-slate-700">{{item.邀约老师}}</td>
                                     <td class="px-4 py-3 text-slate-700">{{item.体验课老师}}</td>

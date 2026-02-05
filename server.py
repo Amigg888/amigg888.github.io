@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 import subprocess
@@ -8,7 +8,7 @@ import bcrypt
 import time
 from datetime import datetime, timedelta
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder='.')
 app.config['SECRET_KEY'] = 'sendo_secret_key_2026'
 # Session 配置
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -109,6 +109,14 @@ def log_action(username, action, details=""):
         
     with open('audit_logs.json', 'w', encoding='utf-8') as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('.', path)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -219,5 +227,5 @@ def sync_data():
         }), 500
 
 if __name__ == '__main__':
-    # 在 5001 端口运行，监听所有接口以提高兼容性
-    app.run(host='0.0.0.0', port=5001)
+    # 在 3001 端口运行，监听所有接口以提高兼容性
+    app.run(host='0.0.0.0', port=3001)

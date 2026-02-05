@@ -489,7 +489,8 @@ createApp({
                         textStyle: { color: '#94a3b8', fontSize: 10 },
                         itemWidth: 12,
                         itemHeight: 4,
-                        itemGap: 15
+                        itemGap: 15,
+                        data: isMonthView ? ['当日实收', '平均目标'] : ['单月业绩', '累计实收', '累计目标']
                     },
                     animationDuration: 2000,
                     grid: { top: 50, left: 45, right: 45, bottom: 35 },
@@ -512,32 +513,50 @@ createApp({
                             nameTextStyle: { color: '#64748b', fontSize: 9, align: 'right', padding: [0, 0, 10, 0] },
                             axisLabel: { color: '#64748b', fontSize: 9 }, 
                             splitLine: { lineStyle: { color: 'rgba(255,255,255,0.02)', type: 'dashed' } }
+                        },
+                        {
+                            type: 'value',
+                            name: isMonthView ? '' : '单月实收',
+                            show: !isMonthView,
+                            nameTextStyle: { color: '#64748b', fontSize: 9, align: 'left', padding: [0, 0, 10, 0] },
+                            axisLabel: { color: '#64748b', fontSize: 9 },
+                            splitLine: { show: false }
                         }
                     ],
                     series: [
                         {
-                            name: isMonthView ? '当日实收' : '累计实收',
-                            type: isMonthView ? 'bar' : 'line', // 月份视图用柱状图，更清晰
-                            data: seriesData,
-                            barWidth: isMonthView ? '60%' : undefined,
-                            smooth: !isMonthView,
-                            symbol: isMonthView ? 'none' : 'circle',
-                            symbolSize: 6,
+                            name: isMonthView ? '当日实收' : '单月业绩',
+                            type: 'bar',
+                            data: revenueDataPoints,
+                            barWidth: '40%',
+                            yAxisIndex: isMonthView ? 0 : 1,
                             itemStyle: { 
-                                color: isMonthView ? 
-                                    new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        { offset: 0, color: '#00d2ff' },
-                                        { offset: 1, color: 'rgba(0, 210, 255, 0.1)' }
-                                    ]) : '#00d2ff',
-                                borderRadius: isMonthView ? [4, 4, 0, 0] : 0
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(0, 210, 255, 0.3)' },
+                                    { offset: 1, color: 'rgba(0, 210, 255, 0.05)' }
+                                ]),
+                                borderRadius: [4, 4, 0, 0]
                             },
+                            z: 1
+                        },
+                        {
+                            name: '累计实收',
+                            type: isMonthView ? 'none' : 'line', 
+                            data: seriesData,
+                            showSymbol: !isMonthView,
+                            tooltip: { show: !isMonthView },
+                            smooth: true,
+                            symbol: 'circle',
+                            symbolSize: 6,
+                            itemStyle: { color: '#00d2ff' },
                             lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(0, 210, 255, 0.3)' },
-                            areaStyle: isMonthView ? null : {
+                            areaStyle: {
                                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                                     { offset: 0, color: 'rgba(0, 210, 255, 0.2)' },
                                     { offset: 1, color: 'transparent' }
                                 ])
-                            }
+                            },
+                            z: 3
                         },
                         {
                             name: isMonthView ? '平均目标' : '累计目标',
@@ -546,7 +565,7 @@ createApp({
                             smooth: true,
                             symbol: 'none',
                             lineStyle: { color: 'rgba(255, 255, 255, 0.2)', width: 1, type: 'dashed' },
-                            z: 1
+                            z: 2
                         }
                     ]
                 });
@@ -838,7 +857,7 @@ createApp({
                 let apiHost = window.location.hostname;
                 if (!apiHost || apiHost === '::1') apiHost = '127.0.0.1';
                 
-                const apiPath = `${window.location.protocol}//${apiHost}:5001/sync`;
+                const apiPath = `${window.location.protocol}//${apiHost}:3001/sync`;
                 console.log('Attempting sync to:', apiPath);
 
                 const response = await fetch(apiPath, {
@@ -861,7 +880,7 @@ createApp({
                 }
             } catch (error) {
                 console.error('Sync error details:', error);
-                alert('连接同步服务器失败！\n\n请检查：\n1. server.py 是否已启动\n2. 5001 端口是否被占用\n3. 浏览器是否拦截了请求');
+                alert('连接同步服务器失败！\n\n请检查：\n1. server.py 是否已启动\n2. 3001 端口是否被占用\n3. 浏览器是否拦截了请求');
             } finally {
                 isSyncing.value = false;
                 document.title = originalTitle;

@@ -2,8 +2,15 @@ const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
 
 createApp({
     setup() {
-        const teachers = ref(['小花老师', '桃子老师', '柚子老师', '小草老师']);
+        const teachers = ref(['小花老师', '桃子老师', '柚子老师', '小草老师', '琪琪老师', '杨老师']);
         const teacherName = ref('小花老师');
+
+        const normalizeTeacherName = (name) => {
+            if (!name) return '未知老师';
+            if (name === '许鹤丽') return '桃子老师';
+            if (name === '许俊梅') return '小花老师';
+            return name;
+        };
 
         // RBAC logic
         onMounted(() => {
@@ -45,25 +52,79 @@ createApp({
         // 切换老师时重置或加载数据
         const loadTeacherData = (name) => {
             const saved = localStorage.getItem(`eval_${name}_${currentMonth.value}`);
+            
+            // 默认重置
+            Object.keys(dimData).forEach(id => {
+                Object.keys(dimData[id]).forEach(key => dimData[id][key] = 0);
+                scores[id] = 0;
+            });
+
             if (saved) {
                 const data = JSON.parse(saved);
-                // 深度合并或替换数据
                 Object.keys(data.dimData).forEach(id => {
                     if (dimData[id]) {
                         Object.assign(dimData[id], data.dimData[id]);
                     }
                 });
-                // 重新触发所有维度的计算
-                dimensions.forEach(dim => validateAndCalculate(dim.id));
             } else {
-                // 如果没有保存的数据，则尝试从工作数据中预填（可选，此处先重置）
-                Object.keys(dimData).forEach(id => {
-                    Object.keys(dimData[id]).forEach(key => dimData[id][key] = 0);
-                    scores[id] = 0;
-                });
-                dimensions.forEach(d => d.status = 'pending');
-                // 也要重新计算以更新状态
-                dimensions.forEach(dim => validateAndCalculate(dim.id));
+                // 如果没有保存的数据，则尝试从全局数据中同步
+                syncFromGlobalData(name, currentMonth.value);
+            }
+            
+            // 重新触发所有维度的计算
+            dimensions.forEach(dim => validateAndCalculate(dim.id));
+        };
+
+        // 从全局数据同步核心指标
+        const syncFromGlobalData = (name, month) => {
+            const year = month.split('-')[0];
+            const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
+            const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
+            const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
+
+            // 1. 同步出勤数据
+            const teacherRecords = consumptionData.filter(d => normalizeTeacherName(d.姓名) === name && d.月份 === month);
+            if (teacherRecords.length > 0) {
+                const totalActual = teacherRecords.reduce((sum, r) => sum + (r.出勤人次 || 0), 0);
+                const totalAbsent = teacherRecords.reduce((sum, r) => sum + (r.缺勤人次 || 0), 0);
+                const totalLeave = teacherRecords.reduce((sum, r) => sum + (r.请假人次 || 0), 0);
+                
+                dimData.attendance.actualClasses = totalActual;
+                dimData.attendance.dueClasses = totalActual + totalAbsent + totalLeave;
+            }
+
+            // 2. 同步体验课转化数据
+            const teacherExperiences = experienceData.filter(d => 
+                normalizeTeacherName(d.体验课老师) === name && 
+                d.体验课时间 && d.体验课时间.startsWith(month)
+            );
+            if (teacherExperiences.length > 0) {
+                dimData.conversion.trialStudents = teacherExperiences.length;
+                dimData.conversion.enrolledStudents = teacherExperiences.filter(d => d.状态 === '已报课').length;
+            }
+
+            // 3. 同步续费数据
+            const renewalRecords = enrollmentData.filter(d => 
+                normalizeTeacherName(d.业绩归属人) === name && 
+                d.报课时间 && d.报课时间.startsWith(month) &&
+                d.报课属性 && d.报课属性.includes('续费')
+            );
+            if (renewalRecords.length > 0) {
+                dimData.renewal.paidStudents = renewalRecords.length;
+                // 应续费人数由于数据源中无明确任务数，通常需要手动调整，此处同步实际续费人数作为参考
+                if (dimData.renewal.dueStudents === 0) {
+                    dimData.renewal.dueStudents = renewalRecords.length;
+                }
+            }
+
+            // 4. 同步加分项 - 转介绍
+            const referralRecords = enrollmentData.filter(d => 
+                normalizeTeacherName(d.业绩归属人) === name && 
+                d.报课时间 && d.报课时间.startsWith(month) &&
+                d.报课属性 && d.报课属性.includes('转介绍')
+            );
+            if (referralRecords.length > 0) {
+                dimData.bonus.referrals = referralRecords.length;
             }
         };
 

@@ -5,7 +5,7 @@ import subprocess
 import re
 
 # 配置
-EXCEL_FILE = '「2026」声度体验学员及报课名单.xlsx'
+EXCEL_FILE = '/Users/mima0000/Library/Containers/com.kingsoft.wpsoffice.mac/Data/Library/Application Support/Kingsoft/WPS Cloud Files/userdata/qing/filecache/.285491809/cachedata/E6D6E9AEEA524746BF1C5B41E6D28E4D/「2026」声度体验学员及报课名单.xlsx'
 XLSX2CSV_PATH = '/Users/mima0000/Library/Python/3.9/bin/xlsx2csv'
 OUTPUT_JS_ENROLLMENT = 'data-2026.js'
 OUTPUT_JS_EXPERIENCE = 'data-experience-2026.js'
@@ -37,12 +37,17 @@ def process_experience():
     reader = csv.DictReader(content.splitlines())
     data = []
     for row in reader:
-        if not row.get('学员姓名'): continue
+        name = row.get('学员姓名', '').strip()
+        if not name or name == '学员姓名': continue
+        
         # 转换字段名以匹配 2025 的格式
         item = {
-            "学员姓名": row.get('学员姓名', '').strip(),
+            "学员姓名": name,
             "年级": row.get('年级', ''),
+            "性别": row.get('性别', ''),
+            "学员来源": row.get('学员来源', ''),
             "邀约老师": row.get('邀约老师', ''),
+            "体验课老师": row.get('体验课老师', ''),
             "所在校区": row.get('所在校区', ''),
             "体验课时间": row.get('体验课时间', '').split(' ')[0].replace('/', '-'),
             "状态": row.get('状态', '')
@@ -62,10 +67,12 @@ def process_enrollment():
     reader = csv.DictReader(content.splitlines())
     data = []
     for row in reader:
-        if not row.get('学员姓名'): continue
+        name = row.get('学员姓名', '').strip()
+        if not name or name == '学员姓名': continue
+        
         # 转换字段名以匹配 2025 的格式
         item = {
-            "学员姓名": row.get('学员姓名', '').strip(),
+            "学员姓名": name,
             "报课时间": clean_date(row.get('报课时间', '')),
             "报课属性": row.get('报课属性', ''),
             "报课课时": row.get('报课课时', ''),

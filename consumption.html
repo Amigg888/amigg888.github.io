@@ -269,23 +269,29 @@
                         <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-4 py-3 font-semibold text-slate-600">老师姓名</th>
-                                <th class="px-4 py-3 font-semibold text-slate-600">消课课时</th>
-                                <th class="px-4 py-3 font-semibold text-slate-600">一对一人次</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">上课次数</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">到课人次</th>
                                 <th class="px-4 py-3 font-semibold text-slate-600">消课金额</th>
-                                <th class="px-4 py-3 font-semibold text-slate-600">出勤</th>
-                                <th class="px-4 py-3 font-semibold text-slate-600">请假</th>
-                                <th class="px-4 py-3 font-semibold text-slate-600">缺勤</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">出勤人次</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">请假次数</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">缺勤次数</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">迟到次数</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">缺课已补</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">出勤率</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <tr v-for="(item, idx) in filteredTableData" :key="idx" class="hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-3 font-medium text-slate-700">{{item.姓名}}</td>
-                                <td class="px-4 py-3 text-slate-500">{{item.消课课时}}</td>
-                                <td class="px-4 py-3 text-slate-500">{{item.一对一人次}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.上课次数 || 0}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.消课课时 || 0}}</td>
                                 <td class="px-4 py-3 text-slate-500">¥{{(item.消课金额 || 0).toLocaleString()}}</td>
-                                <td class="px-4 py-3 text-emerald-600">{{item.出勤人次}}</td>
-                                <td class="px-4 py-3 text-amber-600">{{item.请假人次}}</td>
-                                <td class="px-4 py-3 text-rose-600">{{item.缺勤人次}}</td>
+                                <td class="px-4 py-3 text-emerald-600">{{item.出勤人次 || 0}}</td>
+                                <td class="px-4 py-3 text-amber-600">{{item.请假次数 || item.请假人次 || 0}}</td>
+                                <td class="px-4 py-3 text-rose-600">{{item.缺勤次数 || item.缺勤人次 || 0}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.迟到次数 || 0}}</td>
+                                <td class="px-4 py-3 text-indigo-600">{{item.缺课已补 || 0}}</td>
+                                <td class="px-4 py-3 font-bold" :class="parseFloat(item.出勤率) >= 95 ? 'text-emerald-600' : 'text-amber-600'">{{item.出勤率}}</td>
                             </tr>
                         </tbody>
                     </table>

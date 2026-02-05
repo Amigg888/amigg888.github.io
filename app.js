@@ -2,6 +2,13 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
     setup() {
+        const normalizeTeacherName = (name) => {
+            if (!name) return '未知老师';
+            if (name === '许鹤丽') return '桃子老师';
+            if (name === '许俊梅') return '小花老师';
+            return name;
+        };
+
         const currentTab = ref('experience');
         const enrSearch = ref('');
         const enrTableExpanded = ref(false); // 报课明细表格折叠状态，默认折叠
@@ -45,7 +52,11 @@ createApp({
             } else {
                 data = data.filter(item => item.报课时间 && item.报课时间.startsWith(globalFilter.month));
             }
-            return data;
+            // Normalize teacher names in the returned data
+            return data.map(item => ({
+                ...item,
+                业绩归属人: normalizeTeacherName(item.业绩归属人)
+            }));
         });
 
         const searchedEnrollmentDetails = computed(() => {
@@ -55,7 +66,7 @@ createApp({
             const search = enrSearch.value.toLowerCase();
             return data.filter(item => 
                 (item.学员姓名 && item.学员姓名.toLowerCase().includes(search)) || 
-                (item.业绩归属人 && item.业绩归属人.toLowerCase().includes(search)) ||
+                (normalizeTeacherName(item.业绩归属人).toLowerCase().includes(search)) ||
                 (item.报课属性 && item.报课属性.toLowerCase().includes(search)) ||
                 (item.所在校区 && item.所在校区.toLowerCase().includes(search))
             );
@@ -70,7 +81,12 @@ createApp({
             } else {
                 data = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.month));
             }
-            return data;
+            // Normalize teacher names in the returned data
+            return data.map(item => ({
+                ...item,
+                邀约老师: normalizeTeacherName(item.邀约老师),
+                体验课老师: normalizeTeacherName(item.体验课老师)
+            }));
         });
 
         const searchedExperienceDetails = computed(() => {
@@ -80,8 +96,8 @@ createApp({
             const search = expSearch.value.toLowerCase();
             return data.filter(item => 
                 (item.学员姓名 && item.学员姓名.toLowerCase().includes(search)) || 
-                (item.邀约老师 && item.邀约老师.toLowerCase().includes(search)) ||
-                (item.体验课老师 && item.体验课老师.toLowerCase().includes(search)) || 
+                (normalizeTeacherName(item.邀约老师).toLowerCase().includes(search)) ||
+                (normalizeTeacherName(item.体验课老师).toLowerCase().includes(search)) || 
                 (item.所在校区 && item.所在校区.toLowerCase().includes(search)) ||
                 (item.状态 && item.状态.toLowerCase().includes(search))
             );
@@ -111,7 +127,7 @@ createApp({
             if (!conSearch.value) return data;
             const search = conSearch.value.toLowerCase();
             return data.filter(item => 
-                (item.姓名 && item.姓名.toLowerCase().includes(search)) ||
+                (normalizeTeacherName(item.姓名).toLowerCase().includes(search)) ||
                 (item.校区 && item.校区.toLowerCase().includes(search))
             );
         });
@@ -306,7 +322,8 @@ createApp({
             if (teacherRankChart) {
                 const teacherData = {};
                 filteredConsumptionDetails.value.forEach(item => {
-                    teacherData[item.姓名] = (teacherData[item.姓名] || 0) + (item.消课课时 || 0);
+                    const name = normalizeTeacherName(item.姓名);
+                    teacherData[name] = (teacherData[name] || 0) + (item.消课课时 || 0);
                 });
                 const sorted = Object.entries(teacherData).sort((a, b) => b[1] - a[1]);
                 
@@ -419,13 +436,14 @@ createApp({
             if (attendanceChart) {
                 const teacherAttendance = {};
                 filteredConsumptionDetails.value.forEach(item => {
-                    if (!teacherAttendance[item.姓名]) {
-                        teacherAttendance[item.姓名] = { attendance: 0, leave: 0, absence: 0, makeup: 0 };
+                    const name = normalizeTeacherName(item.姓名);
+                    if (!teacherAttendance[name]) {
+                        teacherAttendance[name] = { attendance: 0, leave: 0, absence: 0, makeup: 0 };
                     }
-                    teacherAttendance[item.姓名].attendance += (item.出勤人次 || 0);
-                    teacherAttendance[item.姓名].leave += (item.请假人次 || 0);
-                    teacherAttendance[item.姓名].absence += (item.缺勤人次 || 0);
-                    teacherAttendance[item.姓名].makeup += (item.补课人次 || 0);
+                    teacherAttendance[name].attendance += (item.出勤人次 || 0);
+                    teacherAttendance[name].leave += (item.请假人次 || 0);
+                    teacherAttendance[name].absence += (item.缺勤人次 || 0);
+                    teacherAttendance[name].makeup += (item.补课人次 || 0);
                 });
                 const teachers = Object.keys(teacherAttendance);
 
@@ -465,7 +483,7 @@ createApp({
             const gradeCounts = {};
             filteredExperienceDetails.value.forEach(item => {
                 if (selGradeCampus === 'all' || item.所在校区 === selGradeCampus) {
-                    const grade = item.年龄 || '未知';
+                    const grade = item.年级 || item.年龄 || '未知';
                     gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
                 }
             });
