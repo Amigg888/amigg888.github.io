@@ -166,8 +166,8 @@ const initApp = () => {
                 saveToLocal();
             };
 
-            // Initialize tableData from localStorage or initialData
-            const initData = () => {
+            // Initialize tableData from Server or localStorage or initialData
+            const initData = async () => {
                 // Clear existing data first
                 Object.keys(tableData).forEach(key => delete tableData[key]);
                 
@@ -183,38 +183,49 @@ const initApp = () => {
                     }
                 });
 
-                // Then try to load saved data for the current month
-                const saved = localStorage.getItem(`work_data_${currentMonth.value}`);
-                if (saved) {
-                    try {
+                try {
+                    // 1. Try to load from server (Independent Work Database)
+                    const response = await fetch(`/work-data?month=${currentMonth.value}`);
+                    const serverData = await response.json();
+                    
+                    if (serverData && Object.keys(serverData).length > 0) {
+                        Object.assign(tableData, serverData);
+                        updateSummaryRow('小花老师');
+                        console.log(`从服务器加载了 ${currentMonth.value} 的工作数据`);
+                        return;
+                    }
+
+                    // 2. Fallback to localStorage
+                    const saved = localStorage.getItem(`work_data_${currentMonth.value}`);
+                    if (saved) {
                         const parsed = JSON.parse(saved);
                         Object.keys(parsed).forEach(key => {
                             if (tableData[key]) {
                                 Object.assign(tableData[key], parsed[key]);
                             }
                         });
-                        // Re-calculate summaries after loading
                         updateSummaryRow('小花老师');
-                    } catch (e) {
-                        console.error('Failed to parse saved data:', e);
+                        console.log(`从本地存储加载了 ${currentMonth.value} 的工作数据`);
+                        return;
                     }
-                } else if (presetHistory && presetHistory[currentMonth.value] && presetHistory[currentMonth.value].length > 0) {
-                    // 如果本地无保存数据，则自动加载预设的系统/截图数据
-                    const preset = presetHistory[currentMonth.value][0];
-                    Object.keys(preset.data).forEach(key => {
-                        if (tableData[key]) {
-                            Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
-                        }
-                    });
-                    // 重新计算汇总行
-                    updateSummaryRow('小花老师');
-                    console.log(`自动加载了 ${currentMonth.value} 的预设数据`);
-                }
 
-                // If it's Jan 2026, always try to sync from global data to ensure attendance is populated
-                if (currentMonth.value === '2026-01') {
-                    syncFromGlobalData();
+                    // 3. Fallback to preset History (snapshots)
+                    if (presetHistory && presetHistory[currentMonth.value] && presetHistory[currentMonth.value].length > 0) {
+                        const preset = presetHistory[currentMonth.value][0];
+                        Object.keys(preset.data).forEach(key => {
+                            if (tableData[key]) {
+                                Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
+                            }
+                        });
+                        updateSummaryRow('小花老师');
+                        console.log(`自动加载了 ${currentMonth.value} 的预设历史数据`);
+                    }
+                } catch (e) {
+                    console.error('Failed to load data:', e);
                 }
+                
+                // --- NOTE: Automatic sync from dashboard data is REMOVED to ensure independence ---
+                // if (currentMonth.value === '2026-01') { syncFromGlobalData(); }
             };
 
             const createEmptyRow = (name, id, parent = null, isTeachingDisabled = false) => {
@@ -271,14 +282,30 @@ const initApp = () => {
                 saveToLocal();
             };
 
-            const saveToLocal = () => {
+            const saveToLocal = async () => {
                 saveStatus.value = 'saving';
                 try {
+                    // 1. Save to localStorage for quick recovery
                     localStorage.setItem(`work_data_${currentMonth.value}`, JSON.stringify(tableData));
-                    setTimeout(() => {
-                        saveStatus.value = 'saved';
-                        setTimeout(() => { saveStatus.value = ''; }, 2000);
-                    }, 500);
+                    
+                    // 2. Save to Server (Independent Work Database)
+                    const response = await fetch('/work-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            month: currentMonth.value,
+                            data: tableData
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        setTimeout(() => {
+                            saveStatus.value = 'saved';
+                            setTimeout(() => { saveStatus.value = ''; }, 2000);
+                        }, 500);
+                    } else {
+                        throw new Error('Server save failed');
+                    }
                 } catch (e) {
                     saveStatus.value = 'error';
                     console.error('Save failed:', e);
@@ -289,27 +316,38 @@ const initApp = () => {
             const presetHistory = window.presetWorkHistory || {};
 
             // History Methods
-            const loadHistoryRecords = () => {
-                const saved = localStorage.getItem(`history_work_data_${currentMonth.value}`);
-                let records = saved ? JSON.parse(saved) : [];
+            const loadHistoryRecords = async () => {
+                let records = [];
+                try {
+                    // 1. Try to load from server
+                    const response = await fetch(`/work-history?month=${currentMonth.value}`);
+                    records = await response.json();
+                    
+                    if (!records || records.length === 0) {
+                        // 2. Fallback to localStorage
+                        const saved = localStorage.getItem(`history_work_data_${currentMonth.value}`);
+                        records = saved ? JSON.parse(saved) : [];
+                    }
+                } catch (e) {
+                    console.error('Failed to load history:', e);
+                }
                 
                 // 合并预设记录
                 if (presetHistory[currentMonth.value]) {
                     const preset = presetHistory[currentMonth.value];
-                    // 避免重复添加预设记录
                     preset.forEach(p => {
                         if (!records.some(r => r.id === p.id)) {
                             records.push(p);
                         }
                     });
-                    // 按时间倒序排列
-                    records.sort((a, b) => b.timestamp - a.timestamp);
                 }
                 
+                // 按时间倒序排列
+                records.sort((a, b) => b.timestamp - a.timestamp);
                 historyRecords.value = records;
             };
 
-            const saveHistoryRecord = (isReplace = false) => {
+            const saveHistoryRecord = async (isReplace = false) => {
                 if (!isReplace && !historyNote.value.trim()) {
                     saveStatus.value = 'error';
                     setTimeout(() => { saveStatus.value = ''; }, 2000);
@@ -334,13 +372,28 @@ const initApp = () => {
                     historyRecords.value.unshift(newRecord);
                 }
 
-                localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
-                historyNote.value = '';
-                if (!isReplace) currentVersionId.value = newRecord.id;
-                
-                // 使用状态提示代替弹窗
-                saveStatus.value = 'saved';
-                setTimeout(() => { saveStatus.value = ''; }, 2000);
+                try {
+                    // 1. Save to localStorage
+                    localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
+                    
+                    // 2. Save to Server
+                    await fetch('/work-history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            month: currentMonth.value,
+                            history: historyRecords.value
+                        })
+                    });
+                    
+                    historyNote.value = '';
+                    if (!isReplace) currentVersionId.value = newRecord.id;
+                    saveStatus.value = 'saved';
+                    setTimeout(() => { saveStatus.value = ''; }, 2000);
+                } catch (e) {
+                    console.error('Failed to save history:', e);
+                    saveStatus.value = 'error';
+                }
             };
 
             const loadVersion = (record) => {
@@ -350,18 +403,28 @@ const initApp = () => {
                 updateSummaryRow('小花老师');
                 showHistory.value = false;
                 
-                // 无感加载，仅通过状态提示
                 saveStatus.value = 'saved';
                 setTimeout(() => { saveStatus.value = ''; }, 2000);
             };
 
-            const deleteVersion = (id) => {
+            const deleteVersion = async (id) => {
                 historyRecords.value = historyRecords.value.filter(r => r.id !== id);
-                localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
-                if (currentVersionId.value === id) currentVersionId.value = null;
-                // 无感提示
-                saveStatus.value = 'saved';
-                setTimeout(() => { saveStatus.value = ''; }, 2000);
+                try {
+                    localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
+                    await fetch('/work-history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            month: currentMonth.value,
+                            history: historyRecords.value
+                        })
+                    });
+                    if (currentVersionId.value === id) currentVersionId.value = null;
+                    saveStatus.value = 'saved';
+                    setTimeout(() => { saveStatus.value = ''; }, 2000);
+                } catch (e) {
+                    console.error('Failed to delete history:', e);
+                }
             };
 
             // 监听月份变化并存储到本地，以便跨页面同步

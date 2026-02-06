@@ -16,9 +16,12 @@ createApp({
         const expTableExpanded = ref(false); // 体验课明细表格折叠状态，默认折叠
         const conSearch = ref('');
         const conTableExpanded = ref(false); // 课消明细表格折叠状态，默认折叠
+        const churnSearch = ref('');
+        const churnTableExpanded = ref(false);
         const enrollmentDetails = ref([...(window.enrollmentDetails2025 || []), ...(window.enrollmentDetails2026 || [])]);
         const experienceDetails = ref([...(window.experienceDetails2025 || []), ...(window.experienceDetails2026 || [])]);
         const consumptionDetails = ref([...(window.consumptionData2025 || []), ...(window.consumptionData2026 || [])]);
+        const churnDetails = ref(window.churnData2026 || []);
 
         // Global Date Filter
         const globalFilter = reactive({
@@ -149,6 +152,28 @@ createApp({
                 month,
                 items: groups[month].sort((a, b) => (b.消课课时 || 0) - (a.消课课时 || 0)) // Sort teachers by hours within month
             }));
+        });
+
+        const filteredChurnDetails = computed(() => {
+            let data = churnDetails.value;
+            // Filter by global date
+            if (globalFilter.type === 'year') {
+                data = data.filter(item => item.月份 && item.月份.startsWith(globalFilter.year));
+            } else {
+                data = data.filter(item => item.月份 === globalFilter.month);
+            }
+            return data;
+        });
+
+        const searchedChurnDetails = computed(() => {
+            let data = filteredChurnDetails.value;
+            if (!churnSearch.value) return data;
+            const search = churnSearch.value.toLowerCase();
+            return data.filter(item => 
+                (item.学员姓名 && item.学员姓名.toLowerCase().includes(search)) ||
+                (item.负责老师 && item.负责老师.toLowerCase().includes(search)) ||
+                (item.流失原因 && item.流失原因.toLowerCase().includes(search))
+            );
         });
 
         const showImport = ref(false);
@@ -431,7 +456,34 @@ createApp({
                 });
             }
 
-            // 4. Attendance Chart
+            // 4. Churn Chart (Only for 2026)
+            const churnChart = getChart('churnChart');
+            if (churnChart) {
+                const churnData = filteredChurnDetails.value;
+                const teacherData = {};
+                churnData.forEach(item => {
+                    const name = normalizeTeacherName(item.负责老师);
+                    teacherData[name] = (teacherData[name] || 0) + 1;
+                });
+                const sorted = Object.entries(teacherData).sort((a, b) => b[1] - a[1]);
+
+                churnChart.setOption({
+                    animationDuration: 2000,
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'value', name: '流失人数' },
+                    yAxis: { type: 'category', data: sorted.map(d => d[0]).reverse() },
+                    series: [{
+                        name: '流失人数',
+                        type: 'bar',
+                        data: sorted.map(d => d[1]).reverse(),
+                        itemStyle: { color: '#f43f5e', borderRadius: [0, 4, 4, 0] },
+                        label: { show: true, position: 'right' }
+                    }]
+                });
+            }
+
+            // 5. Attendance Chart (Teacher Detail)
             const attendanceChart = getChart('attendanceChart');
             if (attendanceChart) {
                 const teacherAttendance = {};
@@ -993,10 +1045,11 @@ createApp({
 
         return {
             currentTab, enrSearch, enrTableExpanded, expSearch, expTableExpanded, 
-            conSearch, conTableExpanded,
-            enrollmentDetails, experienceDetails, consumptionDetails,
-            filteredEnrollmentDetails, filteredExperienceDetails, filteredConsumptionDetails,
-            searchedEnrollmentDetails, searchedExperienceDetails, searchedConsumptionDetails,
+            conSearch, conTableExpanded, churnSearch, churnTableExpanded,
+            enrollmentDetails, experienceDetails, consumptionDetails, churnDetails,
+            filteredEnrollmentDetails, filteredExperienceDetails, filteredConsumptionDetails, filteredChurnDetails,
+            searchedEnrollmentDetails, searchedExperienceDetails, searchedConsumptionDetails, searchedChurnDetails,
+            groupedConsumptionDetails,
             globalFilter, showDatePicker, pickerTempYear, selectYear, selectMonth, showImport, importing, importProgress, parsedData, chartFilters,
             campusList, teacherList, kpis, conKpis, currentMonth, saveStatus,
             handleExcelUpload, handleImageUpload, clearParsedData, confirmImport,

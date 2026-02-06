@@ -1,0 +1,27 @@
+{
+    "sendo": {
+        "password": "$2b$12$B07gNDqXmUSndlrXosio.exrVQtc5ElulsWh4fjfCXwUp05eZ8uty",
+        "role": "admin",
+        "name": "总管理员"
+    },
+    "xiaohua": {
+        "password": "$2b$12$VftR1QhHwBiXQJcH7Lku8.LHIj8cASfnNeNTkjfoCkEJXhrZdP8kq",
+        "role": "teacher",
+        "name": "小花老师"
+    },
+    "taozi": {
+        "password": "$2b$12$yJiZScVbZAA9e449dtvPIOqsbuU5c9WZnS/UqKXX.uyMcfb.rQxiq",
+        "role": "teacher",
+        "name": "桃子老师"
+    },
+    "youzi": {
+        "password": "$2b$12$qhSDiSASXzs9TnXACDr.9O0ECd4P4anieJeJgsCEuMTx1JVxTomw6",
+        "role": "teacher",
+        "name": "柚子老师"
+    },
+    "xiaocao": {
+        "password": "$2b$12$e83SVI.IxpWl86HN6QWHye5MgfWrCsVWCslqy/q7t0vYgqh6p189m",
+        "role": "teacher",
+        "name": "小草老师"
+    }
+}

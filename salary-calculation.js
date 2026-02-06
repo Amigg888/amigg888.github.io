@@ -350,7 +350,8 @@ const initApp = () => {
                         const teacherMap = { 'tz': '桃子老师', 'yz': '柚子老师', 'xh_la': '小花老师', 'xh_ch': '小花老师', 'xc': '小草老师' };
                         const teacherName = teacherMap[id];
                         let performanceBonus = 0;
-                        if (teacherName) {
+                        // 小草老师绩效奖金暂不执行，显示0
+                        if (teacherName && id !== 'xc') {
                             const evalSaved = localStorage.getItem(`eval_${teacherName}_${currentMonth.value}`);
                             if (evalSaved) {
                                 const evalData = JSON.parse(evalSaved);

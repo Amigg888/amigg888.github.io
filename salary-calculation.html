@@ -373,11 +373,7 @@
                                             </div>
 
                                             <div v-else-if="col.key === 'attendance'">
-                                                <!-- 小草老师特殊显示：出勤/缺勤/请假/补课 -->
-                                                <div v-if="id === 'xc'" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">
-                                                    {{ tableData[id].actualAttend }} / {{ tableData[id].absence }} / {{ tableData[id].leave }} / {{ tableData[id].makeup }}
-                                                </div>
-                                                <div v-else-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-1">
+                                                <div v-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-1">
                                                     <input type="number" 
                                                            v-model.number="tableData[id].actualAttend" 
                                                            @input="handleAdjustmentChange(id)"

@@ -171,10 +171,13 @@ async def sync_online_docs(url):
                     experience_final.append({
                         "学员姓名": name,
                         "年级": str(row[1]),
-                        "邀约老师": str(row[5]),
-                        "所在校区": str(row[6]),
-                        "体验课时间": excel_date_to_str(row[8]),
-                        "状态": str(row[9])
+                        "性别": str(row[2]) if len(row) > 2 else "未知",
+                        "学员来源": str(row[4]) if len(row) > 4 else "未知",
+                        "邀约老师": str(row[5]) if len(row) > 5 else "未知",
+                        "所在校区": str(row[6]) if len(row) > 6 else "未知",
+                        "体验课老师": str(row[7]) if len(row) > 7 else "未知",
+                        "体验课时间": excel_date_to_str(row[8]) if len(row) > 8 else "",
+                        "状态": str(row[9]) if len(row) > 9 else "未知"
                     })
                 except Exception as e:
                     print(f"解析体验行数据出错: {e}, row: {row}")

@@ -253,19 +253,58 @@
                 </div>
             </div>
 
+            <!-- New: Churn Analysis Row -->
+            <div class="grid grid-cols-1 gap-8" v-if="globalFilter.year === '2026'">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold">2026年流失学员分析</h4>
+                        <span class="text-xs text-slate-400">数据范围：2026年1月-2月</span>
+                    </div>
+                    <div id="churnChart" class="chart-container" style="min-height: 400px;"></div>
+                </div>
+            </div>
+
             <!-- Detail Table -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 class="font-bold text-slate-800 flex items-center gap-2">
                         <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                        {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}课消明细
+                        <template v-if="globalFilter.year === '2026'">
+                            {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}流失学员明细
+                        </template>
+                        <template v-else>
+                            {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month + '月度' }}课消明细
+                        </template>
                     </h3>
                     <div class="flex gap-2">
-                        <input v-model="searchQuery" type="text" placeholder="搜索老师..." class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-48">
+                        <input v-model="searchQuery" type="text" :placeholder="globalFilter.year === '2026' ? '搜索学员/老师/原因...' : '搜索老师...'" class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-48">
                     </div>
                 </div>
                 <div class="overflow-x-auto max-h-[500px]">
-                    <table class="w-full text-left text-xs">
+                    <!-- Churn Table for 2026 -->
+                    <table class="w-full text-left text-xs" v-if="globalFilter.year === '2026'">
+                        <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-slate-600">姓名</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">主要联系人:电话</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">性别</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">结课时间</th>
+                                <th class="px-4 py-3 font-semibold text-slate-600">任课老师</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(item, idx) in filteredChurnTableData" :key="idx" class="hover:bg-slate-50 transition-colors">
+                                <td class="px-4 py-3 font-medium text-slate-700">{{item.学员姓名}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.联系方式}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.性别}}</td>
+                                <td class="px-4 py-3 text-slate-500">{{item.结课时间}}</td>
+                                <td class="px-4 py-3 text-indigo-600 font-medium">{{item.负责老师}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Default Consumption Table -->
+                    <table class="w-full text-left text-xs" v-else>
                         <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-4 py-3 font-semibold text-slate-600">老师姓名</th>
@@ -302,6 +341,7 @@
 
     <script src="data-consumption-2025.js"></script>
     <script src="data-consumption-2026.js"></script>
+    <script src="data-churn-2026.js"></script>
     <script src="consumption.js"></script>
 </body>
 </html>

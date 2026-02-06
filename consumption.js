@@ -10,6 +10,7 @@ createApp({
         };
 
         const consumptionData = [...(window.consumptionData2025 || []), ...(window.consumptionData2026 || [])];
+        const churnData = window.churnData2026 || [];
         const globalFilter = reactive({
             type: 'year',
             year: '2026',
@@ -51,6 +52,23 @@ createApp({
             if (!searchQuery.value) return data;
             const s = searchQuery.value.toLowerCase();
             return data.filter(item => normalizeTeacherName(item.姓名).toLowerCase().includes(s));
+        });
+
+        const filteredChurnTableData = computed(() => {
+            let data = churnData;
+            if (globalFilter.type === 'month') {
+                data = data.filter(item => item.月份 === globalFilter.month);
+            } else {
+                data = data.filter(item => item.月份.startsWith(globalFilter.year));
+            }
+            
+            if (!searchQuery.value) return data;
+            const s = searchQuery.value.toLowerCase();
+            return data.filter(item => 
+                item.学员姓名.toLowerCase().includes(s) || 
+                item.联系方式.toLowerCase().includes(s) ||
+                normalizeTeacherName(item.负责老师).toLowerCase().includes(s)
+            );
         });
 
         // KPI calculations
@@ -182,6 +200,56 @@ createApp({
                 });
                 charts.attendanceChart = attendanceChart;
             }
+
+            // 5. Churn Analysis Chart (New for 2026)
+            const churnChart = getChart('churnChart');
+            if (churnChart) {
+                const reasons = {};
+                const teacherChurn = {};
+                
+                churnData.forEach(item => {
+                    // Reason distribution
+                    reasons[item.流失原因] = (reasons[item.流失原因] || 0) + 1;
+                    // Teacher distribution
+                    const name = normalizeTeacherName(item.负责老师);
+                    teacherChurn[name] = (teacherChurn[name] || 0) + 1;
+                });
+
+                churnChart.setOption({
+                    title: [
+                        { text: '流失原因分布', left: '25%', top: '5%', textStyle: { fontSize: 14 } },
+                        { text: '各老师流失人数', left: '75%', top: '5%', textStyle: { fontSize: 14 } }
+                    ],
+                    tooltip: { trigger: 'item' },
+                    grid: { left: '60%', right: '10%', bottom: '15%', top: '20%' },
+                    xAxis: { type: 'category', data: Object.keys(teacherChurn) },
+                    yAxis: { type: 'value', minInterval: 1 },
+                    series: [
+                        {
+                            name: '流失原因',
+                            type: 'pie',
+                            radius: '50%',
+                            center: ['25%', '55%'],
+                            data: Object.entries(reasons).map(([name, value]) => ({ name, value })),
+                            emphasis: {
+                                itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
+                            },
+                            label: { show: true, formatter: '{b}: {c}人' }
+                        },
+                        {
+                            name: '流失人数',
+                            type: 'bar',
+                            data: Object.values(teacherChurn),
+                            itemStyle: { 
+                                color: '#f43f5e',
+                                borderRadius: [4, 4, 0, 0]
+                            },
+                            label: { show: true, position: 'top' }
+                        }
+                    ]
+                });
+                charts.churnChart = churnChart;
+            }
         };
 
         watch([filteredData, globalFilter], () => {
@@ -203,6 +271,7 @@ createApp({
             selectMonth,
             searchQuery,
             filteredTableData,
+            filteredChurnTableData,
             kpis,
             initCharts
         };

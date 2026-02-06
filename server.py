@@ -226,6 +226,73 @@ def sync_data():
             "message": str(e)
         }), 500
 
+@app.route('/work-data', methods=['GET'])
+def get_work_data():
+    month = request.args.get('month')
+    if not month:
+        return jsonify({"status": "error", "message": "Month is required"}), 400
+    
+    file_path = f'work_data/data_{month}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify({})
+
+@app.route('/work-data', methods=['POST'])
+def save_work_data():
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "未登录"}), 401
+    
+    data = request.json
+    month = data.get('month')
+    table_data = data.get('data')
+    
+    if not month or not table_data:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    
+    if not os.path.exists('work_data'):
+        os.makedirs('work_data')
+    
+    file_path = f'work_data/data_{month}.json'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(table_data, f, ensure_ascii=False, indent=4)
+    
+    log_action(session['username'], "SAVE_WORK_DATA", f"保存了 {month} 的工作数据")
+    return jsonify({"status": "success"})
+
+@app.route('/work-history', methods=['GET'])
+def get_work_history():
+    month = request.args.get('month')
+    if not month:
+        return jsonify({"status": "error", "message": "Month is required"}), 400
+    
+    file_path = f'work_data/history_{month}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify([])
+
+@app.route('/work-history', methods=['POST'])
+def save_work_history():
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "未登录"}), 401
+    
+    data = request.json
+    month = data.get('month')
+    history = data.get('history')
+    
+    if not month or history is None:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    
+    if not os.path.exists('work_data'):
+        os.makedirs('work_data')
+    
+    file_path = f'work_data/history_{month}.json'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(history, f, ensure_ascii=False, indent=4)
+    
+    return jsonify({"status": "success"})
+
 if __name__ == '__main__':
     # 在 3001 端口运行，监听所有接口以提高兼容性
     app.run(host='0.0.0.0', port=3001)
