@@ -9,6 +9,22 @@ createApp({
             return name;
         };
 
+        // 提前定义 Independent Chart Filters，防止 computed 引用时未定义
+        const chartFilters = reactive({
+            expKpi: { dateRange: 'thisMonth' },
+            grade: { campus: 'all' },
+            source: { dateRange: 'thisYear' },
+            gender: { campus: 'all' },
+            funnel: { teacher: 'all' },
+            teacherExp: { dateRange: 'thisYear' },
+            revenueTrend: { campus: 'all' },
+            enrType: { dateRange: 'thisYear' },
+            ranking: { type: 'campus', dateRange: 'thisYear' },
+            aov: { campus: 'all' },
+            consumption: { campus: 'all' },
+            campusPerf: { dateRange: 'thisYear' }
+        });
+
         const currentTab = ref('experience');
         const enrSearch = ref('');
         const enrTableExpanded = ref(false); // 报课明细表格折叠状态，默认折叠
@@ -144,13 +160,14 @@ createApp({
             // Group by month for year view
             const groups = {};
             data.forEach(item => {
-                if (!groups[item.月份]) groups[item.月份] = [];
-                groups[item.月份].push(item);
+                const month = item.月份 || '未知月份';
+                if (!groups[month]) groups[month] = [];
+                groups[month].push(item);
             });
             
             return Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(month => ({
                 month,
-                items: groups[month].sort((a, b) => (b.消课课时 || 0) - (a.消课课时 || 0)) // Sort teachers by hours within month
+                items: groups[month].sort((a, b) => (Number(b.消课课时) || 0) - (Number(a.消课课时) || 0)) // Sort teachers by hours within month
             }));
         });
 
@@ -182,22 +199,8 @@ createApp({
         const parsedData = ref([]);
         const saveStatus = ref(''); // 状态提示：saved, error, ''
         
-        // Independent Chart Filters
-        const chartFilters = reactive({
-            expKpi: { dateRange: 'thisMonth' },
-            grade: { campus: 'all' },
-            source: { dateRange: 'thisYear' },
-            gender: { campus: 'all' },
-            funnel: { teacher: 'all' },
-            teacherExp: { dateRange: 'thisYear' },
-            revenueTrend: { campus: 'all' },
-            enrType: { dateRange: 'thisYear' },
-            ranking: { type: 'campus', dateRange: 'thisYear' },
-            aov: { campus: 'all' },
-            consumption: { campus: 'all' },
-            campusPerf: { dateRange: 'thisYear' }
-        });
-
+        // Independent Chart Filters (moved to top)
+        
         const campusList = ref(['临安校区', '昌化校区']);
         const teacherList = ref(['小花老师', '桃子老师', '柚子老师', '琪琪老师', '杨老师']);
         
@@ -214,6 +217,15 @@ createApp({
             initCharts();
         }, { deep: true });
         const kpis = reactive({
+            // 课消总指标
+            total_consumption_amount: computed(() => {
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (Number(item.消课金额) || 0), 0);
+            }),
+            consumption_target: computed(() => {
+                // 根据筛选范围返回目标额
+                if (globalFilter.type === 'year') return 200000;
+                return 20000; // 月度目标
+            }),
             // 体验课 KPIs - Dynamic based on filtered data
             exp_invited: computed(() => {
                 return filteredExperienceDetails.value.length;
@@ -228,13 +240,13 @@ createApp({
             }),
             exp_conv_rate: computed(() => {
                 const attended = kpis.exp_attended;
-                if (attended === 0) return 0;
+                if (!attended || attended === 0) return 0;
                 const enrolled = kpis.exp_enrolled;
                 return ((enrolled / attended) * 100).toFixed(1);
             }),
             exp_attend_rate: computed(() => {
                 const invited = kpis.exp_invited;
-                if (invited === 0) return 0;
+                if (!invited || invited === 0) return 0;
                 const attended = kpis.exp_attended;
                 return ((attended / invited) * 100).toFixed(1);
             }),
@@ -257,7 +269,7 @@ createApp({
             enr_new_contracts: computed(() => {
                 const uniqueNew = new Set();
                 filteredEnrollmentDetails.value.forEach(item => {
-                    if (item.报课属性.includes('新报')) {
+                    if (item.报课属性 && item.报课属性.includes('新报')) {
                         uniqueNew.add(`${item.学员姓名}-${item.报课时间}`);
                     }
                 });
@@ -266,7 +278,7 @@ createApp({
             enr_renew_contracts: computed(() => {
                 const uniqueRenew = new Set();
                 filteredEnrollmentDetails.value.forEach(item => {
-                    if (item.报课属性.includes('续费')) {
+                    if (item.报课属性 && item.报课属性.includes('续费')) {
                         uniqueRenew.add(`${item.学员姓名}-${item.报课时间}`);
                     }
                 });
@@ -274,33 +286,34 @@ createApp({
             }),
             // 课消 KPIs
             con_total_hours: computed(() => {
-                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.消课课时 || 0), 0);
+                const total = filteredConsumptionDetails.value.reduce((sum, item) => sum + (Number(item.消课课时) || 0), 0);
+                return Number(total.toFixed(1)) || 0;
             }),
             con_total_amount: computed(() => {
-                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.消课金额 || 0), 0);
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (Number(item.消课金额) || 0), 0);
             }),
             con_one_on_one_count: computed(() => {
-                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.一对一人次 || 0), 0);
+                return filteredConsumptionDetails.value.reduce((sum, item) => sum + (Number(item.一对一人次) || 0), 0);
             }),
             con_attendance_rate: computed(() => {
                 const data = filteredConsumptionDetails.value;
-                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
-                const total_possible = attendance + data.reduce((sum, item) => sum + (item.请假人次 || 0) + (item.缺勤人次 || 0), 0);
-                return total_possible > 0 ? ((attendance / total_possible) * 100).toFixed(1) : 0;
+                const attendance = data.reduce((sum, item) => sum + (Number(item.出勤人次) || 0), 0);
+                const total_possible = attendance + data.reduce((sum, item) => sum + (Number(item.请假人次) || 0) + (Number(item.缺勤人次) || 0), 0);
+                return total_possible > 0 ? ((attendance / total_possible) * 100).toFixed(1) : "0.0";
             }),
             con_leave_rate: computed(() => {
                 const data = filteredConsumptionDetails.value;
-                const leave = data.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
-                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
-                const total_possible = attendance + leave + data.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
-                return total_possible > 0 ? ((leave / total_possible) * 100).toFixed(1) : 0;
+                const leave = data.reduce((sum, item) => sum + (Number(item.请假人次) || 0), 0);
+                const attendance = data.reduce((sum, item) => sum + (Number(item.出勤人次) || 0), 0);
+                const total_possible = attendance + leave + data.reduce((sum, item) => sum + (Number(item.缺勤人次) || 0), 0);
+                return total_possible > 0 ? ((leave / total_possible) * 100).toFixed(1) : "0.0";
             }),
             con_absence_rate: computed(() => {
                 const data = filteredConsumptionDetails.value;
-                const absence = data.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
-                const attendance = data.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
-                const total_possible = attendance + absence + data.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
-                return total_possible > 0 ? ((absence / total_possible) * 100).toFixed(1) : 0;
+                const absence = data.reduce((sum, item) => sum + (Number(item.缺勤人次) || 0), 0);
+                const attendance = data.reduce((sum, item) => sum + (Number(item.出勤人次) || 0), 0);
+                const total_possible = attendance + absence + data.reduce((sum, item) => sum + (Number(item.请假人次) || 0), 0);
+                return total_possible > 0 ? ((absence / total_possible) * 100).toFixed(1) : "0.0";
             })
         });
 
@@ -323,20 +336,29 @@ createApp({
         let charts = {};
 
         const initCharts = () => {
-            if (currentTab.value === 'experience') {
-                initExperienceCharts();
-            } else if (currentTab.value === 'enrollment') {
-                initEnrollmentCharts();
-            } else if (currentTab.value === 'consumption') {
-                initConsumptionCharts();
+            console.log('Initializing charts for tab:', currentTab.value);
+            try {
+                if (currentTab.value === 'experience') {
+                    initExperienceCharts();
+                } else if (currentTab.value === 'enrollment') {
+                    initEnrollmentCharts();
+                } else if (currentTab.value === 'consumption') {
+                    initConsumptionCharts();
+                }
+            } catch (error) {
+                console.error('Error initializing charts:', error);
             }
         };
 
         const initConsumptionCharts = async () => {
+            console.log('initConsumptionCharts started');
             await nextTick();
             const getChart = (id) => {
                 const el = document.getElementById(id);
-                if (!el) return null;
+                if (!el) {
+                    console.warn(`Chart element not found: ${id}`);
+                    return null;
+                }
                 let chart = echarts.getInstanceByDom(el);
                 if (chart) chart.dispose();
                 return echarts.init(el);
@@ -345,6 +367,7 @@ createApp({
             // 1. Teacher Rank Chart
             const teacherRankChart = getChart('teacherRankChart');
             if (teacherRankChart) {
+                console.log('Initializing teacherRankChart');
                 const teacherData = {};
                 filteredConsumptionDetails.value.forEach(item => {
                     const name = normalizeTeacherName(item.姓名);
@@ -371,6 +394,7 @@ createApp({
             // 2. Trend Chart (Enhanced with Attendance Rate)
             const trendChart = getChart('trendChart');
             if (trendChart) {
+                console.log('Initializing trendChart');
                 const monthlyData = {};
                 const selCampus = chartFilters.consumption.campus;
                 let trendData = consumptionDetails.value.filter(item => item.姓名 !== '汇总');
@@ -397,7 +421,7 @@ createApp({
                         axisPointer: { type: 'cross' }
                     },
                     legend: { data: ['消课课时', '出勤率'], bottom: 0 },
-                    xAxis: { type: 'category', data: months.map(m => m.split('-')[1] + '月') },
+                    xAxis: { type: 'category', data: months.map(m => (m && m.includes('-') ? m.split('-')[1] : m) + '月') },
                     yAxis: [
                         { type: 'value', name: '课时', position: 'left' },
                         { type: 'value', name: '出勤率', position: 'right', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }
@@ -430,6 +454,7 @@ createApp({
             // 3. Composition Chart (Enhanced to show Attendance breakdown)
             const compositionChart = getChart('compositionChart');
             if (compositionChart) {
+                console.log('Initializing compositionChart');
                 const attendance = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.出勤人次 || 0), 0);
                 const leave = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.请假人次 || 0), 0);
                 const absence = filteredConsumptionDetails.value.reduce((sum, item) => sum + (item.缺勤人次 || 0), 0);
@@ -459,6 +484,7 @@ createApp({
             // 4. Churn Chart (Only for 2026)
             const churnChart = getChart('churnChart');
             if (churnChart) {
+                console.log('Initializing churnChart');
                 const churnData = filteredChurnDetails.value;
                 const teacherData = {};
                 churnData.forEach(item => {
@@ -486,6 +512,7 @@ createApp({
             // 5. Attendance Chart (Teacher Detail)
             const attendanceChart = getChart('attendanceChart');
             if (attendanceChart) {
+                console.log('Initializing attendanceChart');
                 const teacherAttendance = {};
                 filteredConsumptionDetails.value.forEach(item => {
                     const name = normalizeTeacherName(item.姓名);
@@ -1024,16 +1051,28 @@ createApp({
         });
 
         // Watchers & Lifecycle
-        watch(currentTab, () => {
+        watch(currentTab, (newTab) => {
+            console.log('Tab changed to:', newTab);
             // Clean up old charts
             Object.values(charts).forEach(chart => {
                 if (chart) chart.dispose();
             });
             charts = {};
-            initCharts();
+            
+            // Use nextTick to ensure DOM is updated before initializing charts
+            nextTick(() => {
+                initCharts();
+            });
         });
 
         onMounted(() => {
+            // Check for tab parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            if (tabParam && ['experience', 'enrollment', 'consumption', 'churn'].includes(tabParam)) {
+                currentTab.value = tabParam;
+            }
+
             showImport.value = false;
             initCharts();
             window.addEventListener('resize', handleResize);
@@ -1052,6 +1091,7 @@ createApp({
             groupedConsumptionDetails,
             globalFilter, showDatePicker, pickerTempYear, selectYear, selectMonth, showImport, importing, importProgress, parsedData, chartFilters,
             campusList, teacherList, kpis, conKpis, currentMonth, saveStatus,
+            normalizeTeacherName,
             handleExcelUpload, handleImageUpload, clearParsedData, confirmImport,
             addEmptyRow, removeRow
         };

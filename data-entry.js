@@ -22,6 +22,11 @@ const initApp = () => {
             const showDatePicker = ref(false);
             const pickerTempYear = ref(currentMonth.value.split('-')[0]);
 
+            // 自动识别后端服务器地址 (兼容 3001 端口)
+            const serverPort = '3001';
+            const host = window.location.hostname || 'localhost';
+            const serverUrl = window.location.port === serverPort ? '' : `${window.location.protocol}//${host}:${serverPort}`;
+
             const selectMonth = (year, month) => {
                 currentMonth.value = `${year}-${String(month).padStart(2, '0')}`;
                 showDatePicker.value = false;
@@ -87,10 +92,17 @@ const initApp = () => {
             const tableData = reactive({});
 
             const syncFromGlobalData = () => {
+                console.log('开始同步全局数据...');
                 const year = currentMonth.value.split('-')[0];
                 const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
                 const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
                 const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
+
+                console.log('数据源状态:', {
+                    consumption: consumptionData.length,
+                    experience: experienceData.length,
+                    enrollment: enrollmentData.length
+                });
 
                 // Map of IDs to their filters
                 const idConfig = {
@@ -103,7 +115,10 @@ const initApp = () => {
 
                 Object.entries(idConfig).forEach(([id, config]) => {
                     const row = tableData[id];
-                    if (!row) return;
+                    if (!row) {
+                        console.warn(`未找到 ID 为 ${id} 的行数据`);
+                        return;
+                    }
 
                     // 1. Consumption Sync
                     const cRecords = consumptionData.filter(d => 
@@ -113,17 +128,16 @@ const initApp = () => {
                     );
 
                     if (cRecords.length > 0) {
-                        row.regularHours = cRecords.reduce((sum, r) => sum + (r.消课课时 || 0), 0);
-                        row.oneOnOneAttendees = cRecords.reduce((sum, r) => sum + (r.一对一人次 || 0), 0);
-                        row.oneOnOneAmount = cRecords.reduce((sum, r) => sum + (r.一对一金额 || 0), 0);
-                        row.attendance = cRecords.reduce((sum, r) => sum + (r.出勤人次 || 0), 0);
-                        row.absence = cRecords.reduce((sum, r) => sum + (r.缺勤人次 || 0), 0);
-                        row.leave = cRecords.reduce((sum, r) => sum + (r.请假人次 || 0), 0);
-                        row.makeup = cRecords.reduce((sum, r) => sum + (r.补课人次 || r.缺课已补 || 0), 0);
+                        row.regularHours = cRecords.reduce((sum, r) => sum + (Number(r.消课课时) || 0), 0);
+                        row.oneOnOneAttendees = cRecords.reduce((sum, r) => sum + (Number(r.一对一人次) || 0), 0);
+                        row.oneOnOneAmount = cRecords.reduce((sum, r) => sum + (Number(r.一对一金额) || 0), 0);
+                        row.attendance = cRecords.reduce((sum, r) => sum + (Number(r.出勤人次) || 0), 0);
+                        row.absence = cRecords.reduce((sum, r) => sum + (Number(r.缺勤人次) || 0), 0);
+                        row.leave = cRecords.reduce((sum, r) => sum + (Number(r.请假人次) || 0), 0);
+                        row.makeup = cRecords.reduce((sum, r) => sum + (Number(r.补课人次) || Number(r.缺课已补) || 0), 0);
                     }
 
                     // 2. Experience Sync
-                    // 试听邀约归属邀约老师
                     const inviteRecords = experienceData.filter(d => 
                         normalizeTeacherName(d.邀约老师) === config.name && 
                         d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
@@ -133,7 +147,6 @@ const initApp = () => {
                         row.demoInvites = inviteRecords.length;
                     }
 
-                    // 试听课上课和转化归属上课老师
                     const teachingRecords = experienceData.filter(d => 
                         normalizeTeacherName(d.体验课老师) === config.name && 
                         d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
@@ -153,10 +166,12 @@ const initApp = () => {
                     });
 
                     if (enRecords.length > 0) {
-                        row.newStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报')).length;
+                        row.newStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报'))
+                                                   .reduce((sum, r) => sum + (Number(r.报课人数) || 1), 0); // 默认1人，如果有报课人数则累加
                         row.newSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报'))
                                                 .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
-                        row.renewalStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费')).length;
+                        row.renewalStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费'))
+                                                      .reduce((sum, r) => sum + (Number(r.报课人数) || 1), 0);
                         row.renewalSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费'))
                                                   .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
                     }
@@ -167,7 +182,9 @@ const initApp = () => {
             };
 
             // Initialize tableData from Server or localStorage or initialData
-            const initData = async () => {
+            const initData = async (forceSync = false) => {
+                console.log(`开始初始化 ${currentMonth.value} 的数据...`);
+                
                 // Clear existing data first
                 Object.keys(tableData).forEach(key => delete tableData[key]);
                 
@@ -183,49 +200,85 @@ const initApp = () => {
                     }
                 });
 
+                let hasLoadedData = false;
+
+                // If forceSync is requested, we go straight to syncFromGlobalData after initialization
+                if (forceSync) {
+                    console.log('强制同步模式：将从系统明细文件抓取最新数据');
+                    syncFromGlobalData();
+                    return;
+                }
+
                 try {
-                    // 1. Try to load from server (Independent Work Database)
-                    const response = await fetch(`/work-data?month=${currentMonth.value}`);
-                    const serverData = await response.json();
-                    
-                    if (serverData && Object.keys(serverData).length > 0) {
-                        Object.assign(tableData, serverData);
-                        updateSummaryRow('小花老师');
-                        console.log(`从服务器加载了 ${currentMonth.value} 的工作数据`);
-                        return;
-                    }
-
-                    // 2. Fallback to localStorage
-                    const saved = localStorage.getItem(`work_data_${currentMonth.value}`);
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        Object.keys(parsed).forEach(key => {
-                            if (tableData[key]) {
-                                Object.assign(tableData[key], parsed[key]);
-                            }
-                        });
-                        updateSummaryRow('小花老师');
-                        console.log(`从本地存储加载了 ${currentMonth.value} 的工作数据`);
-                        return;
-                    }
-
-                    // 3. Fallback to preset History (snapshots)
-                    if (presetHistory && presetHistory[currentMonth.value] && presetHistory[currentMonth.value].length > 0) {
-                        const preset = presetHistory[currentMonth.value][0];
-                        Object.keys(preset.data).forEach(key => {
-                            if (tableData[key]) {
-                                Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
-                            }
-                        });
-                        updateSummaryRow('小花老师');
-                        console.log(`自动加载了 ${currentMonth.value} 的预设历史数据`);
+                    // 1. Try to load from server (Independent Work Database) - Highest Priority
+                    const timestamp = new Date().getTime();
+                    const response = await fetch(`${serverUrl}/work-data?month=${currentMonth.value}&t=${timestamp}`, {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        if (serverData && Object.keys(serverData).length > 0) {
+                            // Only update if serverData has meaningful content
+                            Object.assign(tableData, serverData);
+                            updateSummaryRow('小花老师');
+                            console.log(`从服务器加载了 ${currentMonth.value} 的工作数据 (t=${timestamp})`);
+                            hasLoadedData = true;
+                        }
                     }
                 } catch (e) {
-                    console.error('Failed to load data:', e);
+                    console.warn('Server data fetch failed (likely no backend server):', e);
                 }
-                
-                // --- NOTE: Automatic sync from dashboard data is REMOVED to ensure independence ---
-                // if (currentMonth.value === '2026-01') { syncFromGlobalData(); }
+
+                if (!hasLoadedData) {
+                    // 2. Try to load from localStorage - Second Priority
+                    try {
+                        const saved = localStorage.getItem(`work_data_${currentMonth.value}`);
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            Object.assign(tableData, parsed);
+                            updateSummaryRow('小花老师');
+                            console.log(`从本地存储加载了 ${currentMonth.value} 的工作数据`);
+                            hasLoadedData = true;
+                        }
+                    } catch (e) {
+                        console.error('LocalStorage load failed:', e);
+                    }
+                }
+
+                if (!hasLoadedData) {
+                    // 3. Fallback to preset History (snapshots) - Third Priority
+                    try {
+                        const historySource = window.presetWorkHistory || {};
+                        const monthKey = currentMonth.value;
+                        if (historySource[monthKey] && historySource[monthKey].length > 0) {
+                            const preset = historySource[monthKey][0];
+                            Object.keys(preset.data).forEach(key => {
+                                if (tableData[key]) {
+                                    Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
+                                }
+                            });
+                            console.log(`加载了 ${monthKey} 的预设历史数据`);
+                            hasLoadedData = true;
+                        }
+                    } catch (e) {
+                        console.error('Preset history load failed:', e);
+                    }
+                }
+
+                // 4. Final Fallback: Auto-sync from global data ONLY IF no other data was found
+                if (!hasLoadedData) {
+                    console.log('未找到现有数据，正在从系统明细自动同步...');
+                    syncFromGlobalData();
+                } else {
+                    console.log('数据加载完成，未执行自动同步（保留现有数据）。');
+                }
+            };
+
+            const changeMonth = (delta) => {
+                const date = new Date(currentMonth.value + '-01');
+                date.setMonth(date.getMonth() + delta);
+                currentMonth.value = date.toISOString().slice(0, 7);
+                initData(); // 切换月份时重新初始化
             };
 
             const createEmptyRow = (name, id, parent = null, isTeachingDisabled = false) => {
@@ -282,33 +335,61 @@ const initApp = () => {
                 saveToLocal();
             };
 
-            const saveToLocal = async () => {
+            let saveTimeout = null;
+            let lastSavedJson = '';
+
+            const saveToLocal = async (isManual = false) => {
+                // If it's an auto-save, we check if data has actually changed
+                const currentJson = JSON.stringify(tableData);
+                if (!isManual && currentJson === lastSavedJson) {
+                    return;
+                }
+
                 saveStatus.value = 'saving';
-                try {
-                    // 1. Save to localStorage for quick recovery
-                    localStorage.setItem(`work_data_${currentMonth.value}`, JSON.stringify(tableData));
-                    
-                    // 2. Save to Server (Independent Work Database)
-                    const response = await fetch('/work-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            month: currentMonth.value,
-                            data: tableData
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        setTimeout(() => {
+                
+                // Clear any pending debounce
+                if (saveTimeout) clearTimeout(saveTimeout);
+
+                const performSave = async () => {
+                    try {
+                        // 1. Save to localStorage for quick recovery
+                        localStorage.setItem(`work_data_${currentMonth.value}`, currentJson);
+                        
+                        // 2. Save to Server (Independent Work Database)
+                        const response = await fetch(`${serverUrl}/work-data`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                month: currentMonth.value,
+                                data: tableData
+                            }),
+                            credentials: 'include' // 确保携带 cookie
+                        });
+                        
+                        if (response.ok) {
+                            lastSavedJson = currentJson;
                             saveStatus.value = 'saved';
-                            setTimeout(() => { saveStatus.value = ''; }, 2000);
-                        }, 500);
-                    } else {
-                        throw new Error('Server save failed');
+                            setTimeout(() => { 
+                                if (saveStatus.value === 'saved') saveStatus.value = ''; 
+                            }, 2000);
+                        } else if (response.status === 401) {
+                            saveStatus.value = 'error';
+                            console.error('Save failed: Unauthorized. Please login.');
+                            // Optional: redirect to login or show modal
+                        } else {
+                            throw new Error(`Server save failed with status: ${response.status}`);
+                        }
+                    } catch (e) {
+                        saveStatus.value = 'error';
+                        console.error('Save failed:', e);
                     }
-                } catch (e) {
-                    saveStatus.value = 'error';
-                    console.error('Save failed:', e);
+                };
+
+                if (isManual) {
+                    await performSave();
+                } else {
+                    // Debounce auto-saves by 1.5 seconds
+                    saveTimeout = setTimeout(performSave, 1500);
                 }
             };
 
@@ -320,7 +401,9 @@ const initApp = () => {
                 let records = [];
                 try {
                     // 1. Try to load from server
-                    const response = await fetch(`/work-history?month=${currentMonth.value}`);
+                    const response = await fetch(`${serverUrl}/work-history?month=${currentMonth.value}`, {
+                        credentials: 'include'
+                    });
                     records = await response.json();
                     
                     if (!records || records.length === 0) {
@@ -377,13 +460,14 @@ const initApp = () => {
                     localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
                     
                     // 2. Save to Server
-                    await fetch('/work-history', {
+                    await fetch(`${serverUrl}/work-history`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             month: currentMonth.value,
                             history: historyRecords.value
-                        })
+                        }),
+                        credentials: 'include'
                     });
                     
                     historyNote.value = '';
@@ -411,13 +495,14 @@ const initApp = () => {
                 historyRecords.value = historyRecords.value.filter(r => r.id !== id);
                 try {
                     localStorage.setItem(`history_work_data_${currentMonth.value}`, JSON.stringify(historyRecords.value));
-                    await fetch('/work-history', {
+                    await fetch(`${serverUrl}/work-history`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             month: currentMonth.value,
                             history: historyRecords.value
-                        })
+                        }),
+                        credentials: 'include'
                     });
                     if (currentVersionId.value === id) currentVersionId.value = null;
                     saveStatus.value = 'saved';
@@ -462,6 +547,7 @@ const initApp = () => {
                 historyNote,
                 currentVersionId,
                 handleInputChange,
+                initData,
                 saveToLocal,
                 syncFromGlobalData,
                 saveHistoryRecord,
@@ -469,6 +555,7 @@ const initApp = () => {
                 deleteVersion,
                 calculateRate,
                 calculateAttendanceRate,
+                changeMonth,
                 isMobileMenuOpen: ref(false)
             };
         }

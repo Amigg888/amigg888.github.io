@@ -204,7 +204,7 @@
                                 class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 md:px-4 md:py-2 rounded-xl border border-slate-200 transition-all duration-200 group">
                             <i data-lucide="calendar" class="w-4 h-4 text-slate-500 group-hover:text-blue-600"></i>
                             <span class="text-xs font-bold text-slate-700">
-                                {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : globalFilter.month.split('-')[0] + '年' + globalFilter.month.split('-')[1] + '月' }}
+                                {{ globalFilter.type === 'year' ? globalFilter.year + '年度' : (globalFilter.month && globalFilter.month.includes('-') ? globalFilter.month.split('-')[0] + '年' + globalFilter.month.split('-')[1] + '月' : globalFilter.month) }}
                             </span>
                             <i data-lucide="chevron-down" :class="['w-3 h-3 text-slate-400 transition-transform duration-200', showDatePicker ? 'rotate-180' : '']"></i>
                         </button>
@@ -729,12 +729,12 @@
                                     <tr v-if="globalFilter.type === 'year'" class="bg-slate-50/80 border-y border-slate-200/60">
                                         <td colspan="11" class="px-4 py-2 font-bold text-blue-600 text-[11px] flex items-center gap-2">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                            {{ group.month.split('-')[0] }}年{{ group.month.split('-')[1] }}月
+                                            {{ group.month && group.month.includes('-') ? group.month.split('-')[0] + '年' + group.month.split('-')[1] + '月' : group.month }}
                                             <span class="text-[10px] font-normal text-slate-400 ml-2">(共 {{group.items.length}} 条记录)</span>
                                         </td>
                                     </tr>
                                     <tr v-for="(item, idx) in group.items" :key="idx" class="hover:bg-slate-50 transition-colors">
-                                        <td v-if="globalFilter.type === 'year'" class="px-4 py-3 text-slate-400 font-medium">{{item.月份.split('-')[1]}}月</td>
+                                        <td v-if="globalFilter.type === 'year'" class="px-4 py-3 text-slate-400 font-medium">{{ (item.月份 && item.月份.includes('-')) ? item.月份.split('-')[1] : item.月份 }}月</td>
                                         <td class="px-4 py-3 font-medium text-slate-700">{{item.姓名}}</td>
                                         <td class="px-4 py-3 text-slate-500">{{item.校区}}</td>
                                         <td class="px-4 py-3 text-slate-500 font-semibold">{{item.消课课时}}</td>

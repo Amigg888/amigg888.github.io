@@ -9,9 +9,16 @@ const initApp = () => {
 
     createApp({
         setup() {
-            const isAuthorized = ref(true); // Now handled by auth-guard.js
+            const isAuthorized = ref(false); // Default to false for security
             const inputPassword = ref('');
             const passwordError = ref(false);
+
+            // Check session storage for existing authorization
+            onMounted(() => {
+                if (sessionStorage.getItem('salary_authorized') === 'true') {
+                    isAuthorized.value = true;
+                }
+            });
 
             // User Info for RBAC
             const currentUser = ref(JSON.parse(localStorage.getItem('user')) || { role: 'admin' });
@@ -21,6 +28,22 @@ const initApp = () => {
             const showAdjustmentModal = ref(false);
             const activeTeacherId = ref(null);
             const tempAdjustments = ref([]);
+
+            const copyingId = ref(null);
+
+            const shouldShowInCard = (id, colKey) => {
+                const row = tableData[id];
+                if (!row || colKey === 'name') return false;
+                
+                // 跳过不适用的列
+                if (row.isTeachingDisabled && ['conversionBonus', 'classCommission', 'performanceBonus'].includes(colKey)) {
+                    return false;
+                }
+                if (row.isPartTime && ['attendance', 'conversionBonus', 'salesCommission', 'performanceBonus'].includes(colKey)) {
+                    return false;
+                }
+                return true;
+            };
 
             const openAdjustmentModal = (id) => {
                 activeTeacherId.value = id;
@@ -115,19 +138,28 @@ const initApp = () => {
                 'xc': 523.53
             };
 
+            const teacherImages = {
+                '小花老师': 'img/小花老师.png',
+                '临安校区': 'img/小花老师.png',
+                '昌化校区': 'img/小花老师.png',
+                '小草老师': 'img/小草老师.png',
+                '柚子老师': 'img/柚子老师.png',
+                '桃子老师': 'img/桃子老师.png'
+            };
+
             const columns = [
-                { key: 'name', label: '姓名', width: '120px' },
-                { key: 'attendance', label: '出勤', width: '130px' },
-                { key: 'baseSalary', label: '基本工资' },
-                { key: 'inviteBonus', label: '邀约奖金' },
-                { key: 'conversionBonus', label: '体验课转化奖励' },
-                { key: 'classCommission', label: '课时工资' },
-                { key: 'salesCommission', label: '业绩提成' },
-                { key: 'performanceBonus', label: '绩效奖金' },
-                { key: 'grossPay', label: '应发工资' },
-                { key: 'socialSecurity', label: '社保代扣' },
-                { key: 'adjustments', label: '其他', width: '150px' },
-                { key: 'netPay', label: '实发工资' }
+                { key: 'name', label: '姓名', width: '130px' },
+                { key: 'attendance', label: '出勤', width: '80px' },
+                { key: 'baseSalary', label: '基本工资', width: '85px' },
+                { key: 'inviteBonus', label: '邀约奖金', width: '85px' },
+                { key: 'conversionBonus', label: '体验转化', width: '85px' },
+                { key: 'classCommission', label: '课时工资', width: '85px' },
+                { key: 'salesCommission', label: '业绩提成', width: '85px' },
+                { key: 'performanceBonus', label: '绩效奖金', width: '85px' },
+                { key: 'grossPay', label: '应发工资', width: '85px' },
+                { key: 'socialSecurity', label: '社保', width: '85px' },
+                { key: 'adjustments', label: '其他', width: '85px' },
+                { key: 'netPay', label: '实发工资', width: '85px' }
             ];
 
             // 历史记录相关方法
@@ -225,6 +257,11 @@ const initApp = () => {
                 }, 300);
             };
 
+            onMounted(() => {
+                initData();
+                loadHistoryRecords();
+            });
+
             // 计算合计行
             const grandTotal = computed(() => {
                 const total = {
@@ -265,39 +302,192 @@ const initApp = () => {
                 return total;
             });
 
-            const initData = () => {
-                const savedWorkData = localStorage.getItem(`work_data_${currentMonth.value}`);
+            const initData = async () => {
+                const year = currentMonth.value.split('-')[0];
                 let workData = null;
 
-                // 加载手动保存的调整数据
-                const manualSaved = localStorage.getItem(`salary_manual_${currentMonth.value}`);
-                const manualData = manualSaved ? JSON.parse(manualSaved) : {};
-
-                if (savedWorkData) {
-                    try {
-                        workData = JSON.parse(savedWorkData);
-                    } catch (e) {
-                        console.error('解析工作数据失败:', e);
+                // 1. 尝试从服务器加载工作数据 (Independent Work Database)
+                let isFromServer = false;
+                try {
+                    // 如果是在本地开发环境（如 Live Server 5500/5501 端口），尝试连接到 3001 端口的服务
+                    const serverPort = '3001';
+                    const host = window.location.hostname || 'localhost';
+                    const serverUrl = window.location.port === serverPort ? '' : `http://${host}:${serverPort}`;
+                    
+                    // 添加时间戳防止缓存
+                    const timestamp = new Date().getTime();
+                    console.log(`正在从服务器获取 ${currentMonth.value} 的工作数据... URL: ${serverUrl}/work-data?month=${currentMonth.value}&t=${timestamp}`);
+                    const response = await fetch(`${serverUrl}/work-data?month=${currentMonth.value}&t=${timestamp}`, {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        if (serverData && Object.keys(serverData).length > 0) {
+                            workData = serverData;
+                            isFromServer = true;
+                            console.log(`从服务器成功加载了 ${currentMonth.value} 的工作数据`, workData);
+                        }
+                    } else {
+                        console.warn(`服务器返回错误: ${response.status}`);
                     }
-                } else if (window.presetWorkHistory && window.presetWorkHistory[currentMonth.value]) {
-                    // 如果没有本地保存的数据，但有预设数据，使用最新的预设数据
+                } catch (e) {
+                    console.error('从服务器获取工作数据失败:', e);
+                }
+
+                // 2. 如果服务器没有数据，回退到 localStorage
+                if (!workData) {
+                    const savedWorkData = localStorage.getItem(`work_data_${currentMonth.value}`);
+                    if (savedWorkData) {
+                        try {
+                            workData = JSON.parse(savedWorkData);
+                            console.log('从本地缓存加载了工作数据');
+                        } catch (e) {
+                            console.error('解析本地工作数据失败:', e);
+                        }
+                    }
+                }
+
+                // 3. 如果本地也没有，回退到预设数据
+                if (!workData && window.presetWorkHistory && window.presetWorkHistory[currentMonth.value]) {
                     const monthPresets = window.presetWorkHistory[currentMonth.value];
                     if (monthPresets.length > 0) {
-                        // 按时间戳降序排序，取最新的
                         const latestPreset = [...monthPresets].sort((a, b) => b.timestamp - a.timestamp)[0];
                         workData = latestPreset.data;
                         console.log(`使用预设数据进行 ${currentMonth.value} 的工资计算`);
                     }
                 }
 
+                // 加载手动保存的调整数据
+                const manualSaved = localStorage.getItem(`salary_manual_${currentMonth.value}`);
+                const manualData = manualSaved ? JSON.parse(manualSaved) : {};
+
+                // 强制同步逻辑优化：只有在没有服务器数据，或者明确需要从全局 JS 同步时才执行
+                // 如果已经从服务器获取了数据，则不再从静态 JS 文件强制覆盖，除非服务器数据为空
+                const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
+                const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
+                const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
+                
+                const hasGlobalData = consumptionData.length > 0 || experienceData.length > 0 || enrollmentData.length > 0;
+                
+                if (!isFromServer && hasGlobalData) {
+                    console.log(`从全局数据同步 ${currentMonth.value} 的工作数据...`);
+                    const oldWorkData = workData || {};
+                    workData = {};
+                    
+                    const idConfig = {
+                        'xh_la': { name: '小花老师', campus: '临安校区' },
+                        'xh_ch': { name: '小花老师', campus: '昌化校区' },
+                        'tz': { name: '桃子老师', campus: null },
+                        'yz': { name: '柚子老师', campus: null },
+                        'xc': { name: '小草老师', campus: null, isTeachingDisabled: true },
+                        'qq': { name: '琪琪老师', campus: null, isPartTime: true }
+                    };
+
+                    Object.entries(idConfig).forEach(([id, config]) => {
+                        const monthStr = currentMonth.value;
+                        
+                        // 1. 邀约/转化数据 (experienceData)
+                        // 邀约奖金归属于邀约老师
+                        const inviteExp = experienceData.filter(d => {
+                            const dMonth = d.体验课时间 ? d.体验课时间.substring(0, 7) : '';
+                            return dMonth === monthStr && 
+                                   d.邀约老师 === config.name && 
+                                   (!config.campus || d.所在校区 === config.campus);
+                        });
+                        const demoInvites = inviteExp.length;
+
+                        // 转化奖金逻辑修正：
+                        // 教务销售老师（如小草老师）只拿邀约奖金（20元/人）。
+                        // 只有实际上课的老师（体验课老师）才拿转化奖金（50元/人）。
+                        const teachingExp = experienceData.filter(d => {
+                            const dMonth = d.体验课时间 ? d.体验课时间.substring(0, 7) : '';
+                            return dMonth === monthStr && 
+                                   d.体验课老师 === config.name && 
+                                   (!config.campus || d.所在校区 === config.campus);
+                        });
+                        const demoAttendees = teachingExp.filter(d => d.状态 === '已体验' || d.状态 === '已报课').length;
+                        const demoEnrollments = teachingExp.filter(d => d.状态 === '已报课').length;
+
+                        // 2. 消课数据 (consumptionData)
+                        const teacherCons = consumptionData.filter(d => d.月份 === monthStr && d.姓名 === config.name && (!config.campus || d.校区 === config.campus));
+                        const regularHours = teacherCons.reduce((sum, d) => sum + Number(d.消课课时 || 0), 0);
+                        const oneOnOneAttendees = teacherCons.reduce((sum, d) => sum + Number(d.一对一人次 || 0), 0);
+                        
+                        // 优先从全局数据同步一对一金额
+                        const syncedOneOnOneAmount = teacherCons.reduce((sum, d) => sum + Number(d.一对一金额 || 0), 0);
+                        
+                        // 如果全局数据没有一对一金额，则尝试从以下来源获取：
+                        // 1. 本地加载的旧数据 (oldWorkData - 包含从服务器获取的数据)
+                        // 2. 预设的 JSON 数据 (presetWorkHistory)
+                        let oneOnOneAmount = syncedOneOnOneAmount;
+                        if (oneOnOneAmount === 0) {
+                            // 尝试从旧数据获取 (这里包含从服务器加载的数据)
+                            if (oldWorkData[id]) {
+                                oneOnOneAmount = Number(oldWorkData[id].oneOnOneAmount || 0);
+                                console.log(`${config.name} 一对一金额从旧数据恢复: ${oneOnOneAmount}`);
+                            }
+                            
+                            // 如果还是 0，且存在预设数据，从预设数据中获取
+                            if (oneOnOneAmount === 0 && window.presetWorkHistory && window.presetWorkHistory[monthStr]) {
+                                const monthPresets = window.presetWorkHistory[monthStr];
+                                if (monthPresets.length > 0) {
+                                    const latestPreset = [...monthPresets].sort((a, b) => b.timestamp - a.timestamp)[0];
+                                    if (latestPreset.data && latestPreset.data[id]) {
+                                        oneOnOneAmount = Number(latestPreset.data[id].oneOnOneAmount || 0);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        const attendance = teacherCons.reduce((sum, d) => sum + Number(d.出勤人次 || 0), 0);
+                        const absence = teacherCons.reduce((sum, d) => sum + Number(d.缺勤人次 || 0), 0);
+                        const leave = teacherCons.reduce((sum, d) => sum + Number(d.请假人次 || 0), 0);
+                        const makeup = teacherCons.reduce((sum, d) => sum + Number(d.缺课已补 || 0), 0);
+
+                        // 3. 业绩数据 (enrollmentData)
+                        const teacherEnr = enrollmentData.filter(d => {
+                            const dMonth = d.报课时间 ? d.报课时间.substring(0, 7) : '';
+                            return dMonth === monthStr && 
+                                   d.业绩归属人 === config.name && 
+                                   (!config.campus || d.所在校区 === config.campus);
+                        });
+                        const newSales = teacherEnr.filter(d => d.报课属性 === '新报' || d.报课属性 === '新签').reduce((sum, d) => sum + Number(d.实收金额 || 0), 0);
+                        const renewalSales = teacherEnr.filter(d => d.报课属性 === '续费').reduce((sum, d) => sum + Number(d.实收金额 || 0), 0);
+                        const totalSales = newSales + renewalSales;
+
+                        workData[id] = {
+                            id,
+                            name: config.name,
+                            isTeachingDisabled: config.isTeachingDisabled || false,
+                            isPartTime: config.isPartTime || false,
+                            demoInvites,
+                            demoAttendees,
+                            demoEnrollments,
+                            regularHours,
+                            oneOnOneAttendees,
+                            oneOnOneAmount,
+                            attendance,
+                            absence,
+                            leave,
+                            makeup,
+                            newSales,
+                            renewalSales,
+                            totalSales
+                        };
+                    });
+                } else {
+                    console.warn(`未找到 ${currentMonth.value} 的全局数据，跳过同步`);
+                }
+
                 if (workData) {
-                    const teachersList = ['xh_la', 'xh_ch', 'tz', 'yz', 'xc'];
+                    const teachersList = ['xh_la', 'xh_ch', 'tz', 'yz', 'xc', 'qq'];
                     const teacherDisplayNames = {
                         'xh_la': '临安校区',
                         'xh_ch': '昌化校区',
                         'tz': '桃子老师',
                         'yz': '柚子老师',
-                        'xc': '小草老师'
+                        'xc': '小草老师',
+                        'qq': '琪琪老师'
                     };
 
                     // Filter for teachers
@@ -321,12 +511,13 @@ const initApp = () => {
                         const work = workData[id] || { name: id, demoInvites: 0, demoEnrollments: 0, attendance: 0, totalSales: 0 };
                         const baseSalary = baseSalaryMap[id] || 0;
                         
-                        // 1. 体验课奖金
+                        // 1. 体验课奖金 (直接取工作数据中的邀约和转化数)
+                        // 如果老师禁用了教学相关提成（如小草老师），则转化奖金和课时提成应为 0
+                        const isTeachingDisabled = work.isTeachingDisabled || false;
                         const inviteBonus = Number(work.demoInvites || 0) * 20;
-                        const conversionBonus = Number(work.demoEnrollments || 0) * 50;
+                        const conversionBonus = isTeachingDisabled ? 0 : Number(work.demoEnrollments || 0) * 50;
                         
                         // 2. 课时提成
-                        const attendance = Number(work.attendance || 0); // 出勤人次 (仅供参考或门槛判断)
                         const regularHours = Number(work.regularHours || 0); // 常规课消课时 (以此为准计算课时费)
                         
                         let classRate = 10;
@@ -337,7 +528,7 @@ const initApp = () => {
                         const oneOnOneAmount = Number(work.oneOnOneAmount || 0);
                         const oneOnOneCommission = oneOnOneAmount * 0.3; // 一对一金额 * 30%
                         
-                        const classCommission = regularClassCommission + oneOnOneCommission;
+                        const classCommission = isTeachingDisabled ? 0 : (regularClassCommission + oneOnOneCommission);
                         
                         // 3. 销售提成
                         const totalSales = Number(work.totalSales || (Number(work.newSales || 0) + Number(work.renewalSales || 0)));
@@ -346,10 +537,11 @@ const initApp = () => {
                         else if (totalSales > 10000) salesRate = 0.05;
                         const salesCommission = totalSales * salesRate;
 
-                        // 4. 绩效奖金 (从绩效考核数据中读取)
-                        const teacherMap = { 'tz': '桃子老师', 'yz': '柚子老师', 'xh_la': '小花老师', 'xh_ch': '小花老师', 'xc': '小草老师' };
-                        const teacherName = teacherMap[id];
+                        // 4. 绩效奖金 (暂不执行)
                         let performanceBonus = 0;
+                        /* 绩效逻辑暂时停用
+                        const teacherMap = { 'tz': '桃子老师', 'yz': '柚子老师', 'xh_la': '小花老师', 'xh_ch': '小花老师', 'xc': '小草老师', 'qq': '琪琪老师' };
+                        const teacherName = teacherMap[id];
                         // 小草老师绩效奖金暂不执行，显示0
                         if (teacherName && id !== 'xc') {
                             const evalSaved = localStorage.getItem(`eval_${teacherName}_${currentMonth.value}`);
@@ -367,6 +559,7 @@ const initApp = () => {
                                 performanceBonus = 500 * coefficient;
                             }
                         }
+                        */
                         
                         // 获取现有的调整金额和备注（从本地持久化数据加载）
                         const saved = manualData[id] || {};
@@ -389,6 +582,12 @@ const initApp = () => {
                             id,
                             name: teacherDisplayNames[id] || work.name,
                             isTeachingDisabled: work.isTeachingDisabled || false,
+                            // 存储原始计算指标用于弹窗显示
+                            regularHours,
+                            oneOnOneAmount,
+                            totalSales,
+                            demoInvites: work.demoInvites || 0,
+                            demoEnrollments: work.demoEnrollments || 0,
                             shouldAttend,
                             actualAttend,
                             absence: Number(work.absence || 0),
@@ -409,17 +608,21 @@ const initApp = () => {
                         };
                     });
 
-                        const qiqiId = 'qq';
+                    const qiqiId = 'qq';
                     const qiqiManual = manualData[qiqiId] || {};
+                    const qiqiHours = Number(qiqiManual.classHours || 0);
+                    const qiqiRate = Number(qiqiManual.hourlyRate || 0);
+                    const qiqiCommission = qiqiRate * 0.5; // 琪琪老师的课时工资是课时金额的50%
+
                     tableData[qiqiId] = {
                         id: qiqiId,
                         name: '琪琪老师',
                         isPartTime: true,
-                        shouldAttend: qiqiManual.shouldAttend || 0,
-                        actualAttend: qiqiManual.actualAttend || 0,
-                        classHours: qiqiManual.classHours || 0,
-                        hourlyRate: qiqiManual.hourlyRate || 0,
-                        classCommission: (Number(qiqiManual.hourlyRate || 0) * 0.5),
+                        shouldAttend: 0,
+                        actualAttend: 0,
+                        classHours: qiqiHours,
+                        hourlyRate: qiqiRate,
+                        classCommission: qiqiCommission,
                         baseSalary: 0,
                         inviteBonus: 0,
                         conversionBonus: 0,
@@ -470,7 +673,8 @@ const initApp = () => {
             });
 
             const formatMoney = (val) => {
-                return Number(val || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const num = Number(val || 0);
+                return num.toFixed(2);
             };
 
             const getFormula = (id, colKey) => {
@@ -479,16 +683,6 @@ const initApp = () => {
 
                 const f = (val) => formatMoney(val);
                 const originalBase = row.originalBaseSalary || baseSalaryMap[id] || 0;
-
-                // 从全局数据获取原始指标
-                const savedWorkData = localStorage.getItem(`work_data_${currentMonth.value}`);
-                let work = null;
-                if (savedWorkData) {
-                    try {
-                        const parsed = JSON.parse(savedWorkData);
-                        work = parsed[id];
-                    } catch (e) {}
-                }
 
                 switch (colKey) {
                     case 'attendance':
@@ -499,49 +693,124 @@ const initApp = () => {
                         return `出勤天数: ${row.actualAttend} / ${row.shouldAttend} (工作日)`;
 
                     case 'baseSalary':
-                        if (row.isPartTime) return `上课课时: ${row.classHours} 课时 × ${row.hourlyRate} 元/课时 × 50% (分成) = ${f(row.classCommission)}`;
-                        if (row.isSummary) return '汇总各校区老师的基本工资（已扣除缺勤）';
+                        if (row.isPartTime) return `上课课时: ${row.classHours} 课时 | 课时金额: ${row.hourlyRate} × 50% (分成) = ${f(row.classCommission)}`;
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `基本工资总计 = 临安(${f(xh_la.baseSalary)}) + 昌化(${f(xh_ch.baseSalary)}) = ${f(row.baseSalary)}`;
+                                }
+                            }
+                            return '汇总各校区老师的基本工资（已扣除缺勤）';
+                        }
                         if (row.shouldAttend > 0 && row.actualAttend < row.shouldAttend) {
                             return `出勤折算: ${f(originalBase)} (原薪) - (${f(originalBase)} / ${row.shouldAttend}天 × ${row.shouldAttend - row.actualAttend}天缺勤) = ${f(row.baseSalary)}`;
                         }
                         return `全勤基本工资: ${f(row.baseSalary)}`;
 
                     case 'inviteBonus':
-                        if (row.isPartTime || row.isSummary) return '';
-                        const invites = work ? (work.demoInvites || 0) : 0;
-                        return `邀约奖励: ${invites} 人次 × 20 元/人 = ${f(row.inviteBonus)}`;
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `邀约奖金总计 = 临安(${f(xh_la.inviteBonus)}) + 昌化(${f(xh_ch.inviteBonus)}) = ${f(row.inviteBonus)}`;
+                                }
+                            }
+                            return '汇总各校区邀约奖金';
+                        }
+                        if (row.isPartTime) return '';
+                        return `邀约到店: ${row.demoInvites || 0} 人次 × 20 元/人 = ${f(row.inviteBonus)}`;
 
                     case 'conversionBonus':
-                        if (row.isPartTime || row.isSummary) return '';
-                        const enrolls = work ? (work.demoEnrollments || 0) : 0;
-                        return `转化奖励: ${enrolls} 人次 × 50 元/人 = ${f(row.conversionBonus)}`;
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `转化奖金总计 = 临安(${f(xh_la.conversionBonus)}) + 昌化(${f(xh_ch.conversionBonus)}) = ${f(row.conversionBonus)}`;
+                                }
+                            }
+                            return '汇总各校区转化奖金';
+                        }
+                        if (row.isPartTime) return '';
+                        if (row.isTeachingDisabled) return '教务老师不计转化奖金';
+                        return `报课转化: ${row.demoEnrollments || 0} 人次 × 50 元/人 = ${f(row.conversionBonus)}`;
 
                     case 'classCommission':
-                        if (row.isPartTime) return `课时费: ${row.classHours} 课时 × ${row.hourlyRate} 元/课时 × 50% = ${f(row.classCommission)}`;
-                        if (row.isSummary) return '汇总各校区老师的课时提成';
-                        const regHours = work ? (work.regularHours || 0) : 0;
-                        const oneOnOne = work ? (work.oneOnOneAmount || 0) : 0;
+                        if (row.isPartTime) return `课时费: ${row.hourlyRate} (课时金额) × 50% = ${f(row.classCommission)}`;
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `课时提成总计 = 临安(${f(xh_la.classCommission)}) + 昌化(${f(xh_ch.classCommission)}) = ${f(row.classCommission)}`;
+                                }
+                            }
+                            return '汇总各校区老师的课时提成';
+                        }
+                        
+                        if (row.isTeachingDisabled) return '教务老师不计课时提成';
+                        const regHours = row.regularHours || 0;
+                        const oneOnOne = row.oneOnOneAmount || 0;
+                        
                         let rate = 10;
                         if (regHours > 200) rate = 15;
                         else if (regHours > 150) rate = 12;
-                        return `常规课: ${regHours} 课时 × ${rate} 元/课时 (${f(regHours * rate)}) + 1对1提成: ${f(oneOnOne)} × 30% (${f(oneOnOne * 0.3)}) = ${f(row.classCommission)}`;
+                        
+                        const regTotal = regHours * rate;
+                        const oneTotal = oneOnOne * 0.3;
+                        
+                        return `常规课: ${regHours} 课时 × ${rate} 元/课时 (${f(regTotal)}) + 1对1提成: ${f(oneOnOne)} × 30% (${f(oneTotal)}) = ${f(regTotal + oneTotal)}`;
 
                     case 'salesCommission':
-                        if (row.isPartTime || row.isSummary) return '';
-                        const sales = work ? (work.totalSales || (Number(work.newSales || 0) + Number(work.renewalSales || 0))) : 0;
+                        if (row.isPartTime) return '';
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `业绩提成总计 = 临安(${f(xh_la.salesCommission)}) + 昌化(${f(xh_ch.salesCommission)}) = ${f(row.salesCommission)}`;
+                                }
+                            }
+                            return '';
+                        }
+                        const sales = row.totalSales || 0;
                         let sRate = 0.03;
                         if (sales > 30000) sRate = 0.07;
                         else if (sales > 10000) sRate = 0.05;
-                        return `业绩提成: ${f(sales)} × ${(sRate * 100).toFixed(0)}% = ${f(row.salesCommission)}`;
+                        const sTotal = sales * sRate;
+                        return `业绩提成: ${f(sales)} × ${(sRate * 100).toFixed(0)}% = ${f(sTotal)}`;
 
                     case 'performanceBonus':
                         if (row.isPartTime || row.isSummary) return '';
-                        return `绩效奖金: 500 元 × 考核系数 = ${f(row.performanceBonus)}`;
+                        return `绩效工资暂不执行`;
 
                     case 'grossPay':
                         if (row.isPartTime) return `应发工资 = 课时费 (${f(row.classCommission)})`;
-                        if (row.isSummary) return '应发总额 = 汇总各校区应发工资之和';
-                        return `应发工资 = 基本工资 (${f(row.baseSalary)}) + 邀约 (${f(row.inviteBonus)}) + 转化 (${f(row.conversionBonus)}) + 课时 (${f(row.classCommission)}) + 销售 (${f(row.salesCommission)}) + 绩效 (${f(row.performanceBonus)}) = ${f(row.grossPay)}`;
+                        if (row.isSummary) {
+                            if (id === '小花老师') {
+                                const xh_la = tableData['xh_la'];
+                                const xh_ch = tableData['xh_ch'];
+                                if (xh_la && xh_ch) {
+                                    return `应发总额 = 临安校区(${f(xh_la.grossPay)}) + 昌化校区(${f(xh_ch.grossPay)}) = ${f(row.grossPay)}`;
+                                }
+                            }
+                            return '应发总额 = 汇总各校区应发工资之和';
+                        }
+                        
+                        // 动态构建公式，只包含金额大于 0 的项
+                        const parts = [];
+                        if (row.baseSalary > 0) parts.push(`基本工资 (${f(row.baseSalary)})`);
+                        if (row.inviteBonus > 0) parts.push(`邀约 (${f(row.inviteBonus)})`);
+                        if (row.conversionBonus > 0) parts.push(`转化 (${f(row.conversionBonus)})`);
+                        if (row.classCommission > 0) parts.push(`课时 (${f(row.classCommission)})`);
+                        if (row.salesCommission > 0) parts.push(`销售 (${f(row.salesCommission)})`);
+                        if (row.performanceBonus > 0) parts.push(`绩效 (${f(row.performanceBonus)})`);
+                        
+                        const formulaStr = parts.length > 0 ? parts.join(' + ') : '0.00';
+                        return `应发工资 = ${formulaStr} = ${f(row.grossPay)}`;
 
                     case 'socialSecurity':
                         return row.isSummary ? '汇总社保代扣' : `个人缴纳社保费用: ${f(row.socialSecurity)}`;
@@ -564,8 +833,14 @@ const initApp = () => {
                 const row = tableData[id];
                 if (!row) return;
                 
-                // 重新计算基本工资和总额
-                if (!row.isPartTime && !row.isSummary) {
+                // 重新计算琪琪老师（兼职）的逻辑
+                if (row.isPartTime) {
+                    row.classCommission = Number(row.hourlyRate || 0) * 0.5;
+                    row.grossPay = row.classCommission;
+                }
+                
+                // 重新计算常规老师的基本工资和总额
+                else if (!row.isSummary) {
                     const originalBase = row.originalBaseSalary || baseSalaryMap[id] || 0;
                     if (row.shouldAttend > 0 && row.actualAttend < row.shouldAttend) {
                         row.baseSalary = originalBase - (originalBase / row.shouldAttend * (row.shouldAttend - row.actualAttend));
@@ -604,6 +879,125 @@ const initApp = () => {
 
                 // 触发自动保存
                 saveSalaryData();
+            };
+
+            const copySalaryDetails = (id) => {
+                const row = tableData[id];
+                if (!row) return;
+
+                // 设置正在复制的 ID，触发展示隐藏的模板
+                copyingId.value = id;
+                saveStatus.value = 'saving';
+
+                // 等待 Vue 渲染模板并给图片一点加载时间
+                Vue.nextTick(() => {
+                    setTimeout(() => {
+                        const element = document.getElementById('salary-card-content');
+                        if (!element) {
+                            copyingId.value = null;
+                            saveStatus.value = 'error';
+                            return;
+                        }
+
+                        // 使用 html2canvas 生成图片
+                        html2canvas(element, {
+                            backgroundColor: "#ffffff",
+                            scale: 3, // 提高到 3 倍，确保文字和圆角非常清晰
+                            useCORS: true,
+                            logging: false,
+                            allowTaint: true,
+                            letterRendering: true,
+                            onclone: (clonedDoc) => {
+                                // 确保克隆的文档中模板是可见的且位置正确
+                                const clonedElement = clonedDoc.getElementById('salary-card-content');
+                                if (clonedElement) {
+                                    clonedElement.style.position = 'static';
+                                    clonedElement.style.display = 'flex';
+                                    clonedElement.style.width = '420px'; // 保持原始设计宽度
+                                }
+                            }
+                        }).then(canvas => {
+                        canvas.toBlob(blob => {
+                            if (!blob) {
+                                console.error('Canvas to Blob failed');
+                                saveStatus.value = 'error';
+                                copyingId.value = null;
+                                return;
+                            }
+
+                            // 复制到剪贴板
+                            if (navigator.clipboard && navigator.clipboard.write) {
+                                const data = [new ClipboardItem({ 'image/png': blob })];
+                                navigator.clipboard.write(data).then(() => {
+                                    saveStatus.value = 'saved';
+                                    setTimeout(() => { saveStatus.value = ''; }, 2000);
+                                    copyingId.value = null;
+                                }).catch(err => {
+                                    console.error('Clipboard write failed:', err);
+                                    saveStatus.value = 'error';
+                                    copyingId.value = null;
+                                    // 如果图片复制失败，回退到文本复制
+                                    copyTextFallback(id);
+                                });
+                            } else {
+                                // 不支持 ClipboardItem 的环境
+                                saveStatus.value = 'error';
+                                copyingId.value = null;
+                                copyTextFallback(id);
+                            }
+                        }, 'image/png');
+                    }).catch(err => {
+                            console.error('html2canvas failed:', err);
+                            saveStatus.value = 'error';
+                            copyingId.value = null;
+                        });
+                    }, 300); // 给 300ms 确保渲染和图片加载
+                });
+            };
+
+            const copyTextFallback = (id) => {
+                const row = tableData[id];
+                if (!row) return;
+
+                const f = (val) => formatMoney(val);
+                const month = currentMonth.value;
+                const title = `【工资核算明细】 ${month}`;
+                const teacherName = row.name;
+
+                let details = `${title}\n老师：${teacherName}\n\n`;
+
+                columns.forEach(col => {
+                    if (!shouldShowInCard(id, col.key)) return;
+
+                    const value = row[col.key];
+                    const formula = getFormula(id, col.key);
+                    
+                    details += `${col.label}: ${f(value)}\n`;
+                    if (formula && !row.isSummary) {
+                        details += `计算公式: ${formula}\n`;
+                    }
+                    details += `\n`;
+                });
+
+                details += `------------------\n`;
+                details += `核对无误后请回复，谢谢！`;
+
+                fallbackCopyTextToClipboard(details);
+            };
+
+            const fallbackCopyTextToClipboard = (text) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    saveStatus.value = 'saved';
+                    setTimeout(() => { saveStatus.value = ''; }, 2000);
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
             };
 
             const exportToCSV = () => {
@@ -660,6 +1054,7 @@ const initApp = () => {
                 saveStatus,
                 formatMoney,
                 exportToCSV,
+                copySalaryDetails,
                 showHistory,
                 historyRecords,
                 historyNote,
@@ -673,6 +1068,9 @@ const initApp = () => {
                 showAdjustmentModal,
                 activeTeacherId,
                 tempAdjustments,
+                copyingId,
+                teacherImages,
+                shouldShowInCard,
                 openAdjustmentModal,
                 addAdjustmentItem,
                 removeAdjustmentItem,

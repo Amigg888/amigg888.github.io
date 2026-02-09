@@ -53,6 +53,10 @@ createApp({
             showDatePicker.value = false;
         };
 
+        const goToTab = (tab) => {
+            window.location.href = `index.html?tab=${tab}`;
+        };
+
         // --- 学生数据处理逻辑 ---
         const rawStudentData = ref([]);
         
@@ -868,7 +872,8 @@ createApp({
                         'Accept': 'application/json',
                         'Content-Type': 'application/json'
                     },
-                    mode: 'cors'
+                    mode: 'cors',
+                    credentials: 'include'
                 });
                 
                 const data = await response.json();
@@ -934,6 +939,7 @@ createApp({
             selectYear,
             selectMonth,
             selectQuarter,
+            goToTab,
             enrollmentData,
             experienceData,
             consumptionData,

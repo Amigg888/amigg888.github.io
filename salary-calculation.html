@@ -7,13 +7,15 @@
     <script src="lib/tailwind.js"></script>
     <script src="lib/vue.global.js"></script>
     <script src="lib/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <!-- Auth Guard -->
     <script src="auth-guard.js"></script>
     <style>
         [v-cloak] { display: none; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .data-table th { white-space: nowrap; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
-        .data-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .data-table th { white-space: nowrap; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 0; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+         .data-table td { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px; white-space: nowrap; }
+        .data-table td:first-child, .data-table th:first-child { min-width: 130px; }
         .summary-row { background-color: #f8fafc; }
         .total-row { background-color: #1e293b; color: white; }
         .total-row td { border-bottom: none; font-weight: 900; }
@@ -21,7 +23,7 @@
         .total-row .text-slate-900 { color: white !important; }
         .total-row .text-slate-600 { color: #cbd5e1 !important; }
         .child-row { background-color: #fff; }
-        .money-cell { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-weight: 600; }
+        .money-cell { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 700; }
         
         /* Mobile Adaptations */
         @media (max-width: 768px) {
@@ -207,24 +209,23 @@
                 <button @click="isMobileMenuOpen = true" class="p-2 -ml-2 text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
-                <h1 class="font-bold text-slate-800">工资计算</h1>
+                <h1 class="font-bold text-slate-800 flex-grow text-center">工资计算</h1>
                 <div class="w-10"></div> <!-- Spacer -->
             </div>
 
             <!-- Header -->
-            <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex flex-col md:flex-row md:items-center justify-between sticky top-0 md:top-0 z-30 header-content">
-                <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 mb-4 md:mb-0">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xl font-black text-slate-800 tracking-tight">工资计算表</h2>
-                        <!-- Mobile History Button (optional shortcut) -->
+            <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex flex-col md:flex-row md:items-center justify-between sticky top-0 md:top-0 z-30 header-content">
+                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2 md:mb-0">
+                    <div class="flex items-center justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
+                        <h2 class="text-lg font-black text-slate-800 tracking-tight">工资计算表</h2>
                     </div>
 
                     <!-- Unified Date Picker -->
                     <div class="relative">
                         <button @click="showDatePicker = !showDatePicker" 
-                                class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-all group">
-                            <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <span class="text-sm font-bold text-slate-700">
+                                class="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-all group">
+                            <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="text-xs font-bold text-slate-700">
                                 {{ currentMonth.split('-')[0] }}年{{ currentMonth.split('-')[1] }}月
                             </span>
                             <svg :class="['w-3 h-3 text-slate-400 transition-transform duration-200', showDatePicker ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -279,17 +280,14 @@
             </header>
 
             <!-- Table Section -->
-            <div class="p-8 table-section">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 md:p-4 flex-grow overflow-hidden flex flex-col table-section">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                     <div class="table-container">
                         <table class="data-table w-full text-left border-collapse">
                             <thead>
                                 <tr>
                                     <th v-for="col in columns" :key="col.key" :style="{ width: col.width || 'auto' }" 
-                                        :class="{
-                                            'text-right': col.key !== 'name' && col.key !== 'attendance' && col.key !== 'adjustments',
-                                            'text-center': col.key === 'attendance' || col.key === 'adjustments'
-                                        }">
+                                        class="text-center">
                                         {{ col.label }}
                                     </th>
                                 </tr>
@@ -299,51 +297,55 @@
                                 <template v-for="id in ['小花老师', 'xh_la', 'xh_ch']" :key="id">
                                     <tr v-if="tableData[id]" :class="tableData[id].isSummary ? 'summary-row' : 'child-row'">
                                         <td v-for="col in columns" :key="col.key" 
-                                            :class="{
-                                                'text-right money-cell': col.key !== 'name' && col.key !== 'attendance' && col.key !== 'adjustments',
-                                                'text-center': col.key === 'attendance' || col.key === 'adjustments'
-                                            }"
-                                            :title="getFormula(id, col.key)">
-                                            
-                                            <div v-if="col.key === 'name'" class="flex items-center gap-2">
-                                                <div v-if="tableData[id].isSummary" class="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>
-                                                <div v-else class="w-4 h-px bg-slate-300 ml-2"></div>
-                                                <span :class="tableData[id].isSummary ? 'font-black text-slate-900' : 'text-slate-600 font-bold'">
-                                                    {{ tableData[id].name }}
-                                                </span>
-                                            </div>
+                                             class="text-center"
+                                             :class="{ 'money-cell': col.key !== 'name' && col.key !== 'attendance' }"
+                                             :title="getFormula(id, col.key)">
+                                             
+                                             <div v-if="col.key === 'name'" class="flex items-center justify-center gap-2">
+                                                 <div v-if="tableData[id].isSummary" class="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0"></div>
+                                                 <div v-else class="w-3 h-px bg-slate-300 ml-1 shrink-0"></div>
+                                                 <!-- 仅在总汇总行显示复制按钮 -->
+                                                 <button v-if="id === '小花老师'" @click="copySalaryDetails(id)" class="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors" title="复制工资明细">
+                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                                                     </svg>
+                                                 </button>
+                                                 <span :class="tableData[id].isSummary ? 'font-black text-slate-900' : 'text-slate-600 font-bold'">
+                                                     {{ tableData[id].name }}
+                                                 </span>
+                                             </div>
 
                                             <div v-else-if="col.key === 'attendance'">
-                                                <div v-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-1">
+                                                <div v-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-0.5">
                                                     <input type="number" 
                                                            v-model.number="tableData[id].actualAttend" 
                                                            @input="handleAdjustmentChange(id)"
-                                                           class="w-10 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-right text-xs focus:ring-1 focus:ring-indigo-500 outline-none font-bold"
+                                                           class="w-8 bg-transparent border-none p-0 text-center text-[11px] focus:ring-0 outline-none font-bold text-indigo-600"
                                                            :disabled="tableData[id].isSummary">
-                                                    <span class="text-[10px] text-slate-400">/</span>
+                                                    <span class="text-[9px] text-slate-300">/</span>
                                                     <input type="number" 
                                                            v-model.number="tableData[id].shouldAttend" 
                                                            @input="handleAdjustmentChange(id)"
-                                                           class="w-10 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-right text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                           class="w-8 bg-transparent border-none p-0 text-center text-[11px] focus:ring-0 outline-none text-slate-400"
                                                            :disabled="tableData[id].isSummary">
                                                 </div>
                                                 <span v-else class="text-slate-300 italic text-[10px]">-</span>
                                             </div>
 
-                                            <div v-else-if="col.key === 'adjustments'">
+                                            <div v-else-if="col.key === 'adjustments'" class="relative group inline-flex items-center justify-center">
                                                 <div @click="!tableData[id].isSummary && openAdjustmentModal(id)" 
-                                                     class="flex items-center justify-center gap-1 group cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors"
-                                                     :title="!tableData[id].isSummary ? '点击管理调整项' : ''">
-                                                    <span v-if="tableData[id].adjustments !== 0" 
-                                                          class="text-[10px] text-slate-400 font-normal mr-1">
-                                                        ({{ (tableData[id].adjustmentList || []).length }}项)
-                                                    </span>
+                                                     class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded transition-colors">
                                                     <span class="text-xs font-bold" :class="tableData[id].adjustments >= 0 ? 'text-slate-700' : 'text-red-500'">
                                                         {{ formatMoney(tableData[id].adjustments) }}
                                                     </span>
-                                                    <button v-if="!tableData[id].isSummary"
-                                                            class="ml-1 p-0.5 rounded bg-indigo-50 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-100">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                </div>
+                                                <!-- Floating adjustment info - Absolutely positioned to not affect centering -->
+                                                <div v-if="!tableData[id].isSummary" class="absolute left-full ml-1 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+                                                    <span v-if="tableData[id].adjustments !== 0" class="text-[9px] text-slate-400 mr-1 whitespace-nowrap">
+                                                        {{ (tableData[id].adjustmentList || []).length }}项
+                                                    </span>
+                                                    <button class="p-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 shadow-sm">
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                                         </svg>
                                                     </button>
@@ -358,60 +360,54 @@
                                 </template>
 
                                 <!-- Other Teachers -->
-                                <template v-for="id in ['tz', 'yz', 'xc', 'qq']" :key="id">
-                                    <tr v-if="tableData[id]">
-                                        <td v-for="col in columns" :key="col.key" 
-                                            :class="{
-                                                'text-right money-cell': col.key !== 'name' && col.key !== 'attendance' && col.key !== 'adjustments',
-                                                'text-center': col.key === 'attendance' || col.key === 'adjustments'
-                                            }"
-                                            :title="getFormula(id, col.key)">
-                                            
-                                            <div v-if="col.key === 'name'" class="flex items-center gap-2">
-                                                <div class="w-1.5 h-1.5 rounded-full" :class="tableData[id].isPartTime ? 'bg-amber-500' : 'bg-slate-400'"></div>
-                                                <span class="font-black text-slate-800">{{ tableData[id].name }}</span>
-                                            </div>
+                                <template v-for="id in ['tz', 'yz', 'xc']" :key="id">
+                                    <tr v-if="tableData[id]" class="summary-row">
+                                         <td v-for="col in columns" :key="col.key" 
+                                             class="text-center"
+                                             :class="{ 'money-cell': col.key !== 'name' && col.key !== 'attendance' }"
+                                             :title="getFormula(id, col.key)">
+                                             
+                                             <div v-if="col.key === 'name'" class="flex items-center justify-center gap-2">
+                                                 <div class="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0"></div>
+                                                 <button @click="copySalaryDetails(id)" class="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors" title="复制工资明细">
+                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                                                     </svg>
+                                                 </button>
+                                                 <span class="font-black text-slate-900">{{ tableData[id].name }}</span>
+                                             </div>
 
                                             <div v-else-if="col.key === 'attendance'">
-                                                <div v-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-1">
+                                                <div v-if="!tableData[id].isPartTime" class="flex items-center justify-center gap-0.5">
                                                     <input type="number" 
                                                            v-model.number="tableData[id].actualAttend" 
                                                            @input="handleAdjustmentChange(id)"
-                                                           class="w-10 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-right text-xs focus:ring-1 focus:ring-indigo-500 outline-none font-bold">
-                                                    <span class="text-[10px] text-slate-400">/</span>
+                                                           class="w-8 bg-transparent border-none p-0 text-center text-[11px] focus:ring-0 outline-none font-bold text-indigo-600"
+                                                           :disabled="tableData[id].isSummary">
+                                                    <span class="text-[9px] text-slate-300">/</span>
                                                     <input type="number" 
                                                            v-model.number="tableData[id].shouldAttend" 
                                                            @input="handleAdjustmentChange(id)"
-                                                           class="w-10 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-right text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
+                                                           class="w-8 bg-transparent border-none p-0 text-center text-[11px] focus:ring-0 outline-none text-slate-400"
+                                                           :disabled="tableData[id].isSummary">
                                                 </div>
                                                 <span v-else class="text-slate-300 italic text-[10px]">-</span>
                                             </div>
 
-                                            <!-- 琪琪老师特殊输入列：上课课时和课时金额 -->
-                                            <div v-else-if="tableData[id].isPartTime && (col.key === 'baseSalary' || col.key === 'inviteBonus')">
-                                                <div class="flex items-center justify-end gap-2">
-                                                    <span class="text-[11px] font-bold text-slate-500 whitespace-nowrap">{{ col.key === 'baseSalary' ? '上课课时' : '课时金额' }}</span>
-                                                    <input type="number" 
-                                                           v-model.number="tableData[id][col.key === 'baseSalary' ? 'classHours' : 'hourlyRate']"
-                                                           @input="handleAdjustmentChange(id)"
-                                                           class="w-16 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 text-right text-xs focus:ring-1 focus:ring-amber-500 outline-none font-bold shadow-sm"
-                                                           placeholder="0">
-                                                </div>
-                                            </div>
-
-                                            <div v-else-if="col.key === 'adjustments'">
+                                            <div v-else-if="col.key === 'adjustments'" class="relative group inline-flex items-center justify-center">
                                                 <div @click="openAdjustmentModal(id)" 
-                                                     class="flex items-center justify-center gap-1 group cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors"
-                                                     title="点击管理调整项">
-                                                    <span v-if="tableData[id].adjustments !== 0" 
-                                                          class="text-[10px] text-slate-400 font-normal mr-1">
-                                                        ({{ (tableData[id].adjustmentList || []).length }}项)
-                                                    </span>
+                                                     class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded transition-colors">
                                                     <span class="text-xs font-bold" :class="tableData[id].adjustments >= 0 ? 'text-slate-700' : 'text-red-500'">
                                                         {{ formatMoney(tableData[id].adjustments) }}
                                                     </span>
-                                                    <button class="ml-1 p-0.5 rounded bg-indigo-50 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-100">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                </div>
+                                                <!-- Floating adjustment info - Absolutely positioned to not affect centering -->
+                                                <div class="absolute left-full ml-1 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+                                                    <span v-if="tableData[id].adjustments !== 0" class="text-[9px] text-slate-400 mr-1 whitespace-nowrap">
+                                                        {{ (tableData[id].adjustmentList || []).length }}项
+                                                    </span>
+                                                    <button class="p-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 shadow-sm">
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                                         </svg>
                                                     </button>
@@ -419,13 +415,11 @@
                                             </div>
 
                                             <span v-else :class="col.key === 'netPay' ? 'text-indigo-600 font-black' : (
-                                                (tableData[id].isPartTime && ['baseSalary', 'inviteBonus', 'conversionBonus', 'salesCommission', 'performanceBonus', 'socialSecurity'].includes(col.key)) ||
-                                                (tableData[id].isTeachingDisabled && ['inviteBonus', 'conversionBonus', 'classCommission', 'salesCommission', 'performanceBonus'].includes(col.key))
+                                                (tableData[id].isTeachingDisabled && ['conversionBonus', 'classCommission', 'performanceBonus'].includes(col.key))
                                                 ? 'text-slate-300 italic text-[10px]' : ''
                                             )">
                                                 {{ 
-                                                    (tableData[id].isPartTime && ['baseSalary', 'inviteBonus', 'conversionBonus', 'salesCommission', 'performanceBonus', 'socialSecurity'].includes(col.key)) ||
-                                                    (tableData[id].isTeachingDisabled && ['inviteBonus', 'conversionBonus', 'classCommission', 'salesCommission', 'performanceBonus'].includes(col.key))
+                                                    (tableData[id].isTeachingDisabled && ['conversionBonus', 'classCommission', 'performanceBonus'].includes(col.key))
                                                     ? '-' : formatMoney(tableData[id][col.key]) 
                                                 }}
                                             </span>
@@ -433,25 +427,107 @@
                                     </tr>
                                 </template>
 
-                                <!-- 合计行 -->
-                                <tr v-if="Object.keys(tableData).length > 0" class="total-row">
+                                <!-- 琪琪老师 (兼职) 特殊呈现 -->
+                                <tr v-if="tableData['qq']" class="bg-amber-50/30">
                                     <td v-for="col in columns" :key="col.key" 
-                                        :class="{
-                                            'text-right money-cell': col.key !== 'name' && col.key !== 'attendance' && col.key !== 'adjustments',
-                                            'text-center': col.key === 'attendance' || col.key === 'adjustments'
-                                        }"
-                                        :title="col.key === 'attendance' ? '' : (col.key === 'name' ? '' : '总合计金额')">
-                                        <div v-if="col.key === 'name'" class="flex items-center gap-2">
-                                            <div class="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                                            <span class="font-black">{{ grandTotal.name }}</span>
+                                        class="text-center py-3"
+                                        :class="{ 'money-cell': col.key !== 'name' && col.key !== 'attendance' }"
+                                        :title="getFormula('qq', col.key)">
+                                        
+                                        <!-- 姓名：特殊标识 -->
+                                        <div v-if="col.key === 'name'" class="flex items-center justify-center gap-2">
+                                             <div class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></div>
+                                             <button @click="copySalaryDetails('qq')" class="p-1 rounded-md hover:bg-amber-100 text-amber-500 hover:text-amber-700 transition-colors" title="复制工资明细">
+                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                                                 </svg>
+                                             </button>
+                                             <div class="flex flex-col items-center">
+                                                 <span class="font-black text-slate-900">{{ tableData['qq'].name }}</span>
+                                                 <span class="text-[9px] px-1 bg-amber-100 text-amber-700 rounded font-bold uppercase tracking-tighter">Part-Time</span>
+                                             </div>
+                                         </div>
+
+                                        <!-- 出勤：兼职不填 -->
+                                        <div v-else-if="col.key === 'attendance'" class="text-slate-300 italic text-[10px]">
+                                            兼职
                                         </div>
-                                        <div v-else-if="col.key === 'attendance'" class="text-slate-400 italic text-[10px]">
+
+                                        <!-- 基本工资列：改为输入课时 -->
+                                        <div v-else-if="col.key === 'baseSalary'">
+                                            <div class="flex flex-col items-center gap-1">
+                                                <span class="text-[9px] font-bold text-amber-600 uppercase">课时数</span>
+                                                <input type="number" 
+                                                       v-model.number="tableData['qq'].classHours"
+                                                       @input="handleAdjustmentChange('qq')"
+                                                       class="w-20 bg-white border border-amber-200 rounded px-1 py-0.5 text-center text-xs focus:ring-1 focus:ring-amber-500 outline-none font-black text-amber-700 shadow-sm"
+                                                       placeholder="0">
+                                            </div>
+                                        </div>
+
+                                        <!-- 邀约奖金列：改为输入课时金额 -->
+                                        <div v-else-if="col.key === 'inviteBonus'">
+                                            <div class="flex flex-col items-center gap-1">
+                                                <span class="text-[9px] font-bold text-amber-600 uppercase">课时金额</span>
+                                                <input type="number" 
+                                                       v-model.number="tableData['qq'].hourlyRate"
+                                                       @input="handleAdjustmentChange('qq')"
+                                                       class="w-20 bg-white border border-amber-200 rounded px-1 py-0.5 text-center text-xs focus:ring-1 focus:ring-amber-500 outline-none font-black text-amber-700 shadow-sm"
+                                                       placeholder="0">
+                                            </div>
+                                        </div>
+
+                                        <!-- 课时工资列：显示计算结果 -->
+                                        <div v-else-if="col.key === 'classCommission'" class="flex flex-col items-center">
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase">提成(50%)</span>
+                                            <span class="text-xs font-black text-amber-700">{{ formatMoney(tableData['qq'].classCommission) }}</span>
+                                        </div>
+
+                                        <!-- 其他调整 -->
+                                        <div v-else-if="col.key === 'adjustments'" class="relative group inline-flex items-center justify-center">
+                                            <div @click="openAdjustmentModal('qq')" 
+                                                 class="cursor-pointer hover:bg-amber-100/50 px-2 py-1 rounded transition-colors">
+                                                <span class="text-xs font-bold" :class="tableData['qq'].adjustments >= 0 ? 'text-slate-700' : 'text-red-500'">
+                                                    {{ formatMoney(tableData['qq'].adjustments) }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- 实发工资 -->
+                                        <div v-else-if="col.key === 'netPay'" class="flex flex-col items-center">
+                                            <span class="text-[9px] font-bold text-indigo-400 uppercase">实发</span>
+                                            <span class="text-sm font-black text-indigo-600">{{ formatMoney(tableData['qq'].netPay) }}</span>
+                                        </div>
+
+                                        <!-- 其他无关列：显示横杠 -->
+                                        <span v-else class="text-slate-200 italic text-[10px]">
                                             -
-                                        </div>
-                                        <span v-else :class="col.key === 'netPay' ? 'text-indigo-400' : ''">
-                                            {{ formatMoney(grandTotal[col.key]) }}
                                         </span>
                                     </td>
+                                </tr>
+
+                                <!-- 合计行 -->
+                                <tr v-if="Object.keys(tableData).length > 0" class="total-row">
+                                        <td v-for="col in columns" :key="col.key" 
+                                             class="text-center"
+                                             :class="{ 'money-cell': col.key !== 'name' && col.key !== 'attendance' }"
+                                             :title="col.key === 'attendance' ? '' : (col.key === 'name' ? '' : '总合计金额')">
+                                             <div v-if="col.key === 'name'" class="flex items-center justify-center gap-2">
+                                                 <div class="w-2 h-2 rounded-full bg-white animate-pulse shrink-0"></div>
+                                                 <span class="font-black">{{ grandTotal.name }}</span>
+                                             </div>
+                                            <div v-else-if="col.key === 'attendance'" class="text-slate-400 italic text-[10px]">
+                                                -
+                                            </div>
+                                            <div v-else-if="col.key === 'adjustments'" class="flex items-center justify-center">
+                                                <span class="text-xs font-bold">
+                                                    {{ formatMoney(grandTotal[col.key]) }}
+                                                </span>
+                                            </div>
+                                            <span v-else :class="col.key === 'netPay' ? 'text-indigo-400' : ''">
+                                                {{ formatMoney(grandTotal[col.key]) }}
+                                            </span>
+                                        </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -459,38 +535,33 @@
                 </div>
 
                 <!-- Rules / Legend -->
-                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
-                        <h4 class="text-indigo-800 font-bold text-sm mb-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                        <h4 class="text-indigo-800 font-bold text-xs mb-1.5 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             课时工资规则
                         </h4>
-                        <ul class="text-indigo-700 text-xs space-y-1">
-                            <li>• 150人次以内: 10元/人次</li>
-                            <li>• 150-200人次: 12元/人次</li>
-                            <li>• 200人次以上: 15元/人次</li>
-                            <li>• 一对一课时 * 30%</li>
+                        <ul class="text-indigo-700 text-[10px] space-y-0.5 leading-tight">
+                            <li>• 150人次以内: 10元/人次 | 150-200: 12元/人次</li>
+                            <li>• 200人次以上: 15元/人次 | 一对一 * 30%</li>
                         </ul>
                     </div>
-                    <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
-                        <h4 class="text-emerald-800 font-bold text-sm mb-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                        <h4 class="text-emerald-800 font-bold text-xs mb-1.5 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                             业绩提成规则
                         </h4>
-                        <ul class="text-emerald-700 text-xs space-y-1">
-                            <li>• 1万以内: 3%</li>
-                            <li>• 1万-3万: 5%</li>
-                            <li>• 3万以上: 7%</li>
+                        <ul class="text-emerald-700 text-[10px] space-y-0.5 leading-tight">
+                            <li>• 1万以内: 3% | 1万-3万: 5% | 3万以上: 7%</li>
                         </ul>
                     </div>
-                    <div class="bg-amber-50 border border-amber-100 rounded-xl p-5">
-                        <h4 class="text-amber-800 font-bold text-sm mb-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div class="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                        <h4 class="text-amber-800 font-bold text-xs mb-1.5 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             体验课奖励
                         </h4>
-                        <ul class="text-amber-700 text-xs space-y-1">
-                            <li>• 邀约到店: 20元/人次</li>
-                            <li>• 体验课转化: 50元/人次</li>
+                        <ul class="text-amber-700 text-[10px] space-y-0.5 leading-tight">
+                            <li>• 邀约到店: 20元/人次 | 体验课转化: 50元/人次</li>
                         </ul>
                     </div>
                 </div>
@@ -498,7 +569,98 @@
         </main>
     </div>
 
-        <!-- History Modal -->
+    <!-- Hidden Salary Card for Image Export -->
+    <div id="salary-card-template" v-if="copyingId" class="fixed -left-[9999px] top-0" style="font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;">
+        <div class="w-[420px] bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col" id="salary-card-content">
+            <!-- Card Content -->
+            <div class="p-8 flex flex-col gap-6">
+                <!-- Header: Photo & Name -->
+                <div class="flex items-center gap-6">
+                    <!-- Avatar with Glow -->
+                    <div class="relative group">
+                        <div class="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+                        <div class="relative w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center">
+                            <img v-if="teacherImages[tableData[copyingId]?.name]" 
+                                 :src="teacherImages[tableData[copyingId]?.name]" 
+                                 class="w-full h-full object-cover">
+                            <div v-else class="text-2xl font-black text-slate-300 leading-none flex items-center justify-center w-full h-full">{{ tableData[copyingId]?.name?.charAt(0) }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Info & Net Pay -->
+                    <div class="flex-1 flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-2xl font-[1000] text-slate-800 tracking-tight leading-none">{{ tableData[copyingId]?.name }}</h2>
+                                <p class="text-indigo-500/80 text-[10px] font-black uppercase tracking-[0.2em] mt-2">{{ currentMonth }} 结算单</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-slate-400 text-[8px] font-black uppercase tracking-wider mb-0.5">实发工资</p>
+                                <div class="flex items-baseline justify-end gap-0.5">
+                                    <span class="text-indigo-600 text-xs font-black">¥</span>
+                                    <span class="text-2xl font-[900] text-slate-900 tabular-nums tracking-tighter">{{ formatMoney(tableData[copyingId]?.netPay) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Mini Badges -->
+                        <div class="flex flex-wrap gap-1.5">
+                            <div class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100/50 flex items-center gap-1">
+                                <div class="w-1 h-1 rounded-full bg-indigo-500"></div>
+                                <span class="text-[9px] font-black text-indigo-700 uppercase">{{ tableData[copyingId]?.isPartTime ? '兼职' : '全职' }}</span>
+                            </div>
+                            <div v-if="tableData[copyingId]?.isSummary" class="px-2 py-0.5 rounded-md bg-purple-50 border border-purple-100/50 flex items-center gap-1">
+                                <div class="w-1 h-1 rounded-full bg-purple-500"></div>
+                                <span class="text-[9px] font-black text-purple-700 uppercase">多校区</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Details Panel -->
+                <div class="grid grid-cols-1 gap-1">
+                    <template v-for="col in columns" :key="col.key">
+                        <div v-if="shouldShowInCard(copyingId, col.key) && col.key !== 'netPay'" 
+                             class="group flex flex-col py-2 px-3 rounded-xl transition-all duration-300 hover:bg-slate-50 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-1 h-1 rounded-full bg-slate-200 group-hover:bg-indigo-400 transition-colors"></div>
+                                    <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900">{{ col.label }}</span>
+                                </div>
+                                <span class="text-sm font-[900] text-slate-800 tabular-nums tracking-tight">
+                                    {{ col.key === 'attendance' ? (tableData[copyingId].actualAttend || 0) : formatMoney(tableData[copyingId][col.key]) }}
+                                    <span v-if="col.key === 'attendance'" class="text-[9px] font-bold text-slate-400 ml-0.5">/ {{ tableData[copyingId].shouldAttend || 0 }} 天</span>
+                                </span>
+                            </div>
+                            
+                            <!-- Formula: Only content, tight spacing -->
+                            <div v-if="getFormula(copyingId, col.key)" 
+                                 class="text-[9px] text-slate-400 pl-3 mt-0.5 font-medium leading-relaxed italic opacity-80 group-hover:opacity-100 transition-opacity">
+                                {{ getFormula(copyingId, col.key) }}
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-2 pt-6 border-t border-slate-100 flex flex-col items-center gap-3">
+                    <p class="text-[10px] font-bold text-slate-400 flex items-center gap-2">
+                        <span class="w-6 h-px bg-slate-200"></span>
+                        核对无误后请回复，谢谢
+                        <span class="w-6 h-px bg-slate-200"></span>
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <div class="w-5 h-5 rounded-lg bg-slate-900 flex items-center justify-center">
+                            <span class="text-[8px] font-black text-white">SD</span>
+                        </div>
+                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">声度星主持数据报表</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
         <div v-cloak v-if="showHistory" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" style="display: none;" :style="{ display: showHistory ? 'flex' : 'none' }">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -638,7 +800,13 @@
         </div>
     </div>
 
-<script src="preset-data.js"></script>
+    <script src="data-consumption-2025.js"></script>
+    <script src="data-consumption-2026.js"></script>
+    <script src="data-experience-2025.js"></script>
+    <script src="data-experience-2026.js"></script>
+    <script src="data-2025.js"></script>
+    <script src="data-2026.js"></script>
+    <script src="preset-data.js"></script>
     <script src="salary-calculation.js"></script>
 </body>
 </html>

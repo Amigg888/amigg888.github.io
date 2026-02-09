@@ -110,5 +110,54 @@
         "action": "SAVE_WORK_DATA",
         "details": "保存了 2026-01 的工作数据",
         "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 12:49:18",
+        "username": "sendo",
+        "action": "LOGIN",
+        "details": "登录成功",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 15:42:10",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 15:42:10",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 15:50:42",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 15:50:43",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 16:14:13",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
+    },
+    {
+        "timestamp": "2026-02-09 16:14:13",
+        "username": "sendo",
+        "action": "SAVE_WORK_DATA",
+        "details": "保存了 2026-01 的工作数据",
+        "ip": "127.0.0.1"
     }
 ]

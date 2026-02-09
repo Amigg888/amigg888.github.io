@@ -19,18 +19,18 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- Data Sources 2025 -->
-    <script src="data-2025.js?v=2026-02-06 16:32"></script>
-    <script src="data-experience-2025.js?v=2026-02-06 16:32"></script>
-    <script src="data-consumption-2025.js?v=2026-02-06 16:32"></script>
+    <script src="data-2025.js?v=2026-02-09 20:51"></script>
+    <script src="data-experience-2025.js?v=2026-02-09 20:51"></script>
+    <script src="data-consumption-2025.js?v=2026-02-09 20:51"></script>
 
     <!-- Data Sources 2026 -->
-    <script src="data-2026.js?v=2026-02-06 16:32"></script>
-    <script src="data-experience-2026.js?v=2026-02-06 16:32"></script>
-    <script src="data-consumption-2026.js?v=2026-02-06 16:32"></script>
-    <script src="student-data.js?v=2026-02-06 16:32"></script>
+    <script src="data-2026.js?v=2026-02-09 20:51"></script>
+    <script src="data-experience-2026.js?v=2026-02-09 20:51"></script>
+    <script src="data-consumption-2026.js?v=2026-02-09 20:51"></script>
+    <script src="student-data.js?v=2026-02-09 20:51"></script>
     <script>
         // 添加一个全局变量记录数据更新时间
-        window.ONLINE_SYNC_TIME = "2026-02-06 16:32"; // 这里可以通过脚本动态修改
+        window.ONLINE_SYNC_TIME = "2026-02-09 20:51"; // 这里可以通过脚本动态修改
     </script>
     
     <style>
@@ -732,7 +732,7 @@
                     </div>
 
                     <!-- 试听转化概况 -->
-                    <div class="flex-1 pt-4 border-t border-white/5 flex flex-col gap-3">
+                    <div @click="goToTab('experience')" class="flex-1 pt-4 border-t border-white/5 flex flex-col gap-3 cursor-pointer hover:bg-white/5 transition-all duration-300 rounded-xl">
                         <div class="card-title">
                             <i data-lucide="pie-chart" class="w-4 h-4"></i>
                             <span>试听转化概况</span>
@@ -822,7 +822,7 @@
 
                     <!-- Main KPIs -->
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="glass-card fixed-kpi-card bg-gradient-to-br from-blue-900/40 to-transparent flex flex-col items-center justify-center">
+                        <div @click="goToTab('enrollment')" class="glass-card fixed-kpi-card bg-gradient-to-br from-blue-900/40 to-transparent flex flex-col items-center justify-center cursor-pointer hover:from-blue-800/50 transition-all duration-300">
                             <!-- Title & Icon Centered -->
                             <div class="card-title mb-1 !before:hidden flex items-center gap-1.5">
                                 <i data-lucide="trending-up" class="w-4 h-4 text-blue-400"></i>
@@ -846,7 +846,7 @@
                                 <div class="text-[9px] text-slate-500">客单价: ¥{{ formatNumber(kpis.total_revenue / (kpis.order_count || 1)) }}</div>
                             </div>
                         </div>
-                        <div class="glass-card fixed-kpi-card bg-gradient-to-br from-purple-900/40 to-transparent flex flex-col items-center justify-center">
+                        <div @click="goToTab('consumption')" class="glass-card fixed-kpi-card bg-gradient-to-br from-purple-900/40 to-transparent flex flex-col items-center justify-center cursor-pointer hover:from-purple-800/50 transition-all duration-300">
                             <!-- Title & Icon Centered -->
                             <div class="card-title mb-1 !before:hidden flex items-center gap-1.5">
                                 <i data-lucide="bar-chart-3" class="w-4 h-4 text-purple-400"></i>
@@ -915,7 +915,7 @@
             <!-- Right Column -->
             <div class="flex flex-col gap-3 h-full right-col">
                 <!-- 老师业绩排名 -->
-                <div class="glass-card compact-card flex-1 flex flex-col min-h-0">
+                <div @click="goToTab('enrollment')" class="glass-card compact-card flex-1 flex flex-col min-h-0 cursor-pointer hover:bg-white/5 transition-all duration-300">
                     <div class="card-title">
                         <i data-lucide="award" class="w-4 h-4"></i>
                         <span>老师业绩排名</span>
@@ -937,7 +937,7 @@
                 </div>
 
                 <!-- 老师课消排名 -->
-                <div class="glass-card compact-card flex-1 flex flex-col min-h-0">
+                <div @click="goToTab('consumption')" class="glass-card compact-card flex-1 flex flex-col min-h-0 cursor-pointer hover:bg-white/5 transition-all duration-300">
                     <div class="card-title justify-between">
                         <div class="flex items-center gap-2">
                             <i data-lucide="book-open" class="w-4 h-4" title="出勤人次即课时数"></i>
@@ -1002,6 +1002,6 @@
     </div>
 
     <!-- Main Dashboard Script -->
-    <script src="home-dashboard.js?v=2026-02-06 16:32"></script>
+    <script src="home-dashboard.js?v=2026-02-09 20:51"></script>
 </body>
 </html>

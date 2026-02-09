@@ -190,5 +190,21 @@ window.presetWorkHistory = {
                 'xc': { id: 'xc', name: '小草老师', isTeachingDisabled: true, demoInvites: 1, demoAttendees: 0, demoEnrollments: 0, regularHours: 0, oneOnOneAttendees: 0, oneOnOneAmount: 0, newStudents: 0, newSales: 0, renewalStudents: 1.5, renewalSales: 7195, attendance: 0, absence: 0, leave: 0, makeup: 0 }
             }
         }
+    ],
+    '2026-01': [
+        {
+            id: 'preset-2026-01',
+            timestamp: 1769846400000,
+            displayTime: '2026-01-31 23:59:59',
+            note: '系统自动导入（1月系统数据）',
+            data: {
+                "小花老师": { "absence": 0, "attendance": 58, "children": ["xh_la", "xh_ch"], "demoAttendees": 0, "demoEnrollments": 0, "demoInvites": 0, "isSummary": true, "leave": 7, "makeup": 0, "name": "小花老师", "newSales": 3299, "newStudents": 1, "oneOnOneAmount": 0, "oneOnOneAttendees": 0, "regularHours": 58, "renewalSales": 9899, "renewalStudents": 5 },
+                "xh_la": { "absence": 0, "attendance": 47, "attendanceRate": 0, "demoAttendees": 0, "demoEnrollments": 0, "demoInvites": 0, "demoRate": 0, "id": "xh_la", "isTeachingDisabled": false, "leave": 5, "makeup": 0, "name": "临安校区", "newSales": 0, "newStudents": 0, "oneOnOneAmount": 0, "oneOnOneAttendees": 0, "parent": "小花老师", "regularHours": 47, "renewalSales": 0, "renewalStudents": 0, "totalSales": 0 },
+                "xh_ch": { "absence": 0, "attendance": 11, "attendanceRate": 0, "demoAttendees": 0, "demoEnrollments": 0, "demoInvites": 0, "demoRate": 0, "id": "xh_ch", "isTeachingDisabled": false, "leave": 2, "makeup": 0, "name": "昌化校区", "newSales": 3299, "newStudents": 1, "oneOnOneAmount": 0, "oneOnOneAttendees": 0, "parent": "小花老师", "regularHours": 11, "renewalSales": 9899, "renewalStudents": 5, "totalSales": 0 },
+                "tz": { "absence": 3, "attendance": 154, "attendanceRate": 0, "demoAttendees": 1, "demoEnrollments": 2, "demoInvites": 1, "demoRate": 0, "id": "tz", "isTeachingDisabled": false, "leave": 18, "makeup": 3, "name": "桃子老师", "newSales": 4474.4, "newStudents": 2, "oneOnOneAmount": 0, "oneOnOneAttendees": 0, "parent": null, "regularHours": 159, "renewalSales": 32718.6, "renewalStudents": 12, "totalSales": 0 },
+                "yz": { "absence": 0, "attendance": 162, "attendanceRate": 0, "demoAttendees": 2, "demoEnrollments": 0, "demoInvites": 0, "demoRate": 0, "id": "yz", "isTeachingDisabled": false, "leave": 19, "makeup": 1, "name": "柚子老师", "newSales": 0, "newStudents": 0, "oneOnOneAmount": 247.78, "oneOnOneAttendees": 1, "parent": null, "regularHours": 162, "renewalSales": 0, "renewalStudents": 0, "totalSales": 0 },
+                "xc": { "absence": 0, "attendance": 0, "attendanceRate": 0, "demoAttendees": 3, "demoEnrollments": 1, "demoInvites": 3, "demoRate": 0, "id": "xc", "isTeachingDisabled": true, "leave": 0, "makeup": 0, "name": "小草老师", "newSales": 2700, "newStudents": 1, "oneOnOneAmount": 0, "oneOnOneAttendees": 0, "parent": null, "regularHours": 0, "renewalSales": 0, "renewalStudents": 0, "totalSales": 0 }
+            }
+        }
     ]
 };

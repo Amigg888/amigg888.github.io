@@ -15,7 +15,7 @@
     };
 
     // 核心判定逻辑：以下页面是公开的（无需登录即可查看）
-    const PUBLIC_PAGES = ['index.html', 'home-dashboard.html', 'login.html'];
+    const PUBLIC_PAGES = ['index.html', 'home-dashboard.html', 'login.html', 'consumption.html'];
     
     // 如果是根目录，getPageName 会返回 index.html
     const currentPage = getPageName();

@@ -72,7 +72,7 @@
         "attendance": 154,
         "attendanceRate": 0,
         "demoAttendees": 1,
-        "demoEnrollments": 1,
+        "demoEnrollments": 2,
         "demoInvites": 1,
         "demoRate": 0,
         "id": "tz",
@@ -85,7 +85,7 @@
         "oneOnOneAmount": 0,
         "oneOnOneAttendees": 0,
         "parent": null,
-        "regularHours": 156,
+        "regularHours": 159,
         "renewalSales": 32718.6,
         "renewalStudents": 12,
         "totalSales": 0
