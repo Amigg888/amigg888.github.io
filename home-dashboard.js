@@ -289,6 +289,32 @@ createApp({
         const MONTHLY_REVENUE_TARGET = 100000;
         const MONTHLY_CONSUMPTION_TARGET = 80000;
 
+        // 计算体验转化的辅助函数
+        const getEnrolledCountByTime = () => {
+            const year = effectiveYear.value;
+            const range = timeRange.value;
+            const currentMonthPart = selectedMonth.value;
+            const currentQuarter = selectedQuarter.value;
+            const rawEnrollmentData = getRawEnrollmentData(year);
+            const rawExpData = getRawExperienceData(year);
+            
+            const enrolledStudents = rawExpData.filter(i => i.状态 === '已报课');
+            return enrolledStudents.filter(exp => {
+                const enrollment = rawEnrollmentData.find(e => e.学员姓名 === exp.学员姓名);
+                if (!enrollment) return false;
+                const enrollDate = dayjs(enrollment.报课时间);
+                if (enrollDate.format('YYYY') !== year) return false;
+                if (range === 'month' && currentMonthPart) {
+                    return enrollDate.format('MM') === currentMonthPart;
+                }
+                if (range === 'quarter' && currentQuarter) {
+                    const itemQuarter = Math.floor(enrollDate.month() / 3) + 1;
+                    return itemQuarter === parseInt(currentQuarter);
+                }
+                return true;
+            }).length;
+        };
+
         const kpis = reactive({
             active_students: computed(() => processedStudents.value.length || 125),
             new_enrollments: computed(() => enrollmentData.value.filter(i => i.报课属性 === '新报').length),
@@ -301,17 +327,15 @@ createApp({
                 return baseLeads + newLeadsSince2026;
             }),
             new_leads: computed(() => experienceData.value.length),
-            new_conversion: computed(() => {
-                return experienceData.value.filter(i => i.状态 === '已报课').length;
-            }),
+            new_conversion: computed(() => getEnrolledCountByTime()),
             lead_to_exp_rate: computed(() => {
                 const newLeads = experienceData.value.length; 
-                const newEnrolled = experienceData.value.filter(i => i.状态 === '已报课').length; 
+                const newEnrolled = getEnrolledCountByTime();
                 return newLeads > 0 ? ((newEnrolled / newLeads) * 100).toFixed(2) : "0.00";
             }),
             exp_invited: computed(() => experienceData.value.length),
             exp_attended: computed(() => experienceData.value.filter(i => i.状态 === '已体验' || i.状态 === '已报课').length),
-            exp_enrolled: computed(() => experienceData.value.filter(i => i.状态 === '已报课').length),
+            exp_enrolled: computed(() => getEnrolledCountByTime()),
             total_revenue: computed(() => enrollmentData.value.reduce((sum, i) => sum + (Number(i.归属业绩金额) || 0), 0)),
             revenue_target: computed(() => {
                 if (timeRange.value === 'year') return MONTHLY_REVENUE_TARGET * 12;
@@ -394,21 +418,18 @@ createApp({
                 return null;
             };
 
-            // Global Chart Theme Configuration
+            // Global Chart Theme Configuration - 稳定版
             const chartTheme = {
-                color: ['#00d2ff', '#00ffc6', '#6366f1', '#ec4899', '#f59e0b'],
+                color: ['#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'],
                 textStyle: { fontFamily: 'Inter, PingFang SC, sans-serif' },
                 tooltip: {
                     trigger: 'axis',
                     backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    borderColor: 'rgba(0, 210, 255, 0.3)',
+                    borderColor: 'rgba(59, 130, 246, 0.3)',
                     borderWidth: 1,
                     textStyle: { color: '#f8fafc', fontSize: 12 },
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(0, 0, 0, 0.5)',
                     padding: [8, 12],
                     borderRadius: 6,
-                    backdropFilter: 'blur(4px)',
                     confine: true
                 }
             };
@@ -419,8 +440,116 @@ createApp({
             const enrollmentRatioChart = initChartIfExist('enrollmentRatioChart');
             const leadsChart = initChartIfExist('leadsChart');
             const consumptionChart = initChartIfExist('consumptionChart');
+            const experienceFunnelChart = initChartIfExist('experienceFunnelChart');
 
-            // --- 1. Revenue Trend Chart (Professional Line) ---
+            console.log('[Charts] Initialized:', { 
+                revenueTrendChart: !!revenueTrendChart, 
+                experienceFunnelChart: !!experienceFunnelChart,
+                expData: experienceData.value.length,
+                kpis: { invited: kpis.exp_invited, attended: kpis.exp_attended, enrolled: kpis.exp_enrolled }
+            });
+
+            // --- 0. Experience Funnel Chart (Funnel Style) ---
+            if (experienceFunnelChart) {
+                try {
+                    const expInvited = kpis.exp_invited || 0;
+                    const expAttended = kpis.exp_attended || 0;
+                    const expEnrolled = kpis.exp_enrolled || 0;
+                    
+                    const attendedRate = expInvited > 0 ? Math.round(expAttended / expInvited * 100) : 0;
+                    const enrolledRate = expAttended > 0 ? Math.round(expEnrolled / expAttended * 100) : 0;
+                    
+                    experienceFunnelChart.setOption({
+                        color: ['#3b82f6', '#06b6d4', '#00d4ff'],
+                        tooltip: {
+                            trigger: 'item',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            borderColor: 'rgba(59, 130, 246, 0.4)',
+                            textStyle: { color: '#f8fafc', fontSize: 12 },
+                            formatter: function(params) {
+                                return `<div style="font-weight:bold;margin-bottom:4px;color:${params.color}">${params.name}</div>
+                                        <div>人数: <span style="font-weight:bold">${params.value}人</span></div>
+                                        <div>转化率: <span style="color:#06b6d4;font-weight:bold">${params.data.rate}</span></div>`;
+                            }
+                        },
+                        series: [{
+                            type: 'funnel',
+                            left: '10%',
+                            right: '10%',
+                            top: '10%',
+                            bottom: '10%',
+                            min: 0,
+                            max: expInvited || 1,
+                            minSize: '20%',
+                            maxSize: '100%',
+                            sort: 'descending',
+                            gap: 4,
+                            label: {
+                                show: true,
+                                position: 'inside',
+                                formatter: function(params) {
+                                    return `{name|${params.name}}\n{value|${params.value}人} {rate|${params.data.rate}}`;
+                                },
+                                rich: {
+                                    name: {
+                                        color: '#94a3b8',
+                                        fontSize: 11,
+                                        lineHeight: 16
+                                    },
+                                    value: {
+                                        color: '#fff',
+                                        fontSize: 14,
+                                        fontWeight: 'bold',
+                                        lineHeight: 20
+                                    },
+                                    rate: {
+                                        color: '#06b6d4',
+                                        fontSize: 13,
+                                        fontWeight: 'bold',
+                                        backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                                        padding: [2, 8],
+                                        borderRadius: 10,
+                                        lineHeight: 18
+                                    }
+                                }
+                            },
+                            labelLine: { show: false },
+                            itemStyle: {
+                                borderWidth: 0,
+                                shadowBlur: 10,
+                                shadowColor: 'rgba(59, 130, 246, 0.3)'
+                            },
+                            emphasis: {
+                                label: { fontSize: 14 }
+                            },
+                            data: [
+                                { 
+                                    value: expInvited, 
+                                    name: '邀约',
+                                    rate: '100%',
+                                    itemStyle: { color: '#3b82f6' }
+                                },
+                                { 
+                                    value: expAttended, 
+                                    name: '到访',
+                                    rate: attendedRate + '%',
+                                    itemStyle: { color: '#06b6d4' }
+                                },
+                                { 
+                                    value: expEnrolled, 
+                                    name: '转化',
+                                    rate: enrolledRate + '%',
+                                    itemStyle: { color: '#00d4ff' }
+                                }
+                            ]
+                        }]
+                    });
+                } catch (e) {
+                    console.error('Experience funnel chart error:', e);
+                }
+            }
+
+            // --- 1. Revenue Trend Chart (Professional Line) - 升级版 ---
             if (revenueTrendChart) {
                 try {
                     const year = effectiveYear.value;
@@ -448,7 +577,6 @@ createApp({
                     const revenueDataPoints = dateFilterPrefixes.map(prefix => {
                         const filtered = rawData.filter(item => {
                             const date = (item.报课时间 || '').trim();
-                            // Handle both YYYY-MM and YYYY-MM-DD prefixes
                             return date.startsWith(prefix);
                         });
                         const total = filtered.reduce((sum, item) => sum + (Number(item.归属业绩金额) || Number(item.实收金额) || 0), 0);
@@ -479,41 +607,54 @@ createApp({
                             show: true, 
                             top: 10, 
                             right: 20, 
-                            textStyle: { color: '#94a3b8', fontSize: 10 },
+                            textStyle: { color: '#94a3b8', fontSize: 11 },
                             icon: 'roundRect',
-                            itemWidth: 12,
+                            itemWidth: 14,
                             itemHeight: 4,
-                            itemGap: 15,
+                            itemGap: 20,
                             data: isMonthView ? ['当日实收', '平均目标'] : ['单月业绩', '累计实收', '累计目标']
                         },
                         animationDuration: 2000,
-                        grid: { top: 50, left: 45, right: 45, bottom: 35 },
+                        grid: { top: 55, left: 50, right: 50, bottom: 40 },
                         xAxis: { 
                             type: 'category', 
                             data: xAxisLabels, 
-                            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
+                            axisLine: { 
+                                lineStyle: { 
+                                    color: 'rgba(59, 130, 246, 0.2)',
+                                    width: 2
+                                } 
+                            }, 
                             axisLabel: { 
-                                color: '#64748b', 
-                                fontSize: 10, 
+                                color: '#94a3b8', 
+                                fontSize: 11, 
                                 margin: 15,
                                 interval: isMonthView ? 1 : 0 
                             },
-                            axisTick: { show: false }
+                            axisTick: { 
+                                show: true,
+                                lineStyle: { color: 'rgba(59, 130, 246, 0.3)' }
+                            }
                         },
                         yAxis: [
                             { 
                                 type: 'value', 
                                 name: isMonthView ? '当日实收' : '累计实收',
-                                nameTextStyle: { color: '#64748b', fontSize: 9, align: 'right', padding: [0, 0, 10, 0] },
-                                axisLabel: { color: '#64748b', fontSize: 9 }, 
-                                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.02)', type: 'dashed' } }
+                                nameTextStyle: { color: '#64748b', fontSize: 10, align: 'right', padding: [0, 0, 10, 0] },
+                                axisLabel: { color: '#94a3b8', fontSize: 10 }, 
+                                splitLine: { 
+                                    lineStyle: { 
+                                        color: 'rgba(59, 130, 246, 0.08)', 
+                                        type: 'dashed' 
+                                    } 
+                                }
                             },
                             {
                                 type: 'value',
                                 name: isMonthView ? '' : '单月实收',
                                 show: !isMonthView,
-                                nameTextStyle: { color: '#64748b', fontSize: 9, align: 'left', padding: [0, 0, 10, 0] },
-                                axisLabel: { color: '#64748b', fontSize: 9 },
+                                nameTextStyle: { color: '#64748b', fontSize: 10, align: 'left', padding: [0, 0, 10, 0] },
+                                axisLabel: { color: '#94a3b8', fontSize: 10 },
                                 splitLine: { show: false }
                             }
                         ],
@@ -522,15 +663,12 @@ createApp({
                                 name: isMonthView ? '当日实收' : '单月业绩',
                                 type: 'bar',
                                 data: revenueDataPoints,
-                                barWidth: '40%',
+                                barWidth: '35%',
                                 yAxisIndex: isMonthView ? 0 : 1,
-                                itemStyle: { 
-                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        { offset: 0, color: 'rgba(0, 210, 255, 0.3)' },
-                                        { offset: 1, color: 'rgba(0, 210, 255, 0.05)' }
-                                    ]),
-                                    borderRadius: [4, 4, 0, 0]
-                                },
+                            itemStyle: { 
+                                color: '#3b82f6',
+                                borderRadius: [4, 4, 0, 0]
+                            },
                                 z: 1
                             },
                             {
@@ -541,15 +679,17 @@ createApp({
                                 tooltip: { show: true },
                                 smooth: true,
                                 symbol: 'circle',
-                                symbolSize: isMonthView ? 4 : 6,
-                                itemStyle: { color: '#00d2ff' },
-                                lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(0, 210, 255, 0.3)' },
-                                areaStyle: {
-                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        { offset: 0, color: 'rgba(0, 210, 255, 0.2)' },
-                                        { offset: 1, color: 'transparent' }
-                                    ])
-                                },
+                                symbolSize: isMonthView ? 5 : 8,
+                            itemStyle: { 
+                                color: '#06b6d4'
+                            },
+                            lineStyle: { 
+                                width: 3, 
+                                color: '#06b6d4'
+                            },
+                            areaStyle: {
+                                color: 'rgba(6, 182, 212, 0.2)'
+                            },
                                 z: 3
                             },
                             {
@@ -558,7 +698,11 @@ createApp({
                                 data: isMonthView ? dateFilterPrefixes.map(() => Math.round(totalPeriodTarget / dateFilterPrefixes.length)) : cumulativeTargetPoints,
                                 smooth: true,
                                 symbol: 'none',
-                                lineStyle: { color: 'rgba(255, 255, 255, 0.2)', width: 1, type: 'dashed' },
+                                lineStyle: { 
+                                    color: 'rgba(148, 163, 184, 0.4)', 
+                                    width: 2, 
+                                    type: 'dashed' 
+                                },
                                 z: 2
                             }
                         ]
@@ -568,7 +712,7 @@ createApp({
                 }
             }
 
-            // --- 2. Active Student Chart (Modern Sparkline) ---
+            // --- 2. Active Student Chart (Modern Sparkline) - 升级版 ---
             if (activeStudentChart) {
                 try {
                     const year = effectiveYear.value;
@@ -614,19 +758,10 @@ createApp({
                             emphasis: { disabled: true },
                             lineStyle: { 
                                 width: 3, 
-                                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                                    { offset: 0, color: '#6366f1' },
-                                    { offset: 0.5, color: '#00d2ff' },
-                                    { offset: 1, color: '#34d399' }
-                                ]),
-                                shadowBlur: 15,
-                                shadowColor: 'rgba(99, 102, 241, 0.4)'
+                                color: '#3b82f6'
                             },
                             areaStyle: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                    { offset: 0, color: 'rgba(99, 102, 241, 0.15)' },
-                                    { offset: 1, color: 'rgba(99, 102, 241, 0)' }
-                                ])
+                                color: 'rgba(59, 130, 246, 0.2)'
                             }
                         }]
                     });
@@ -635,16 +770,17 @@ createApp({
                 }
             }
 
-            // --- 3. Enrollment Ratio Chart (Enhanced Donut) ---
+            // --- 3. Enrollment Ratio Chart (Donut Style) ---
             if (enrollmentRatioChart) {
                 try {
                     const getEnrollmentPieData = () => {
-                        const map = { '新签': 0, '续报': 0, '转介绍': 0 };
+                        const map = { '新签': 0, '续报': 0, '扩科': 0, '其他': 0 };
                         enrollmentData.value.forEach(item => {
                             const attr = item.报课属性 || '';
                             if (attr.includes('新报') || attr.includes('新签')) map['新签'] += (Number(item.归属业绩金额) || 0);
                             else if (attr.includes('续报') || attr.includes('续费')) map['续报'] += (Number(item.归属业绩金额) || 0);
-                            else if (attr.includes('转介绍')) map['转介绍'] += (Number(item.归属业绩金额) || 0);
+                            else if (attr.includes('扩科')) map['扩科'] += (Number(item.归属业绩金额) || 0);
+                            else map['其他'] += (Number(item.归属业绩金额) || 0);
                         });
                         
                         const data = Object.entries(map).map(([name, value]) => ({ name, value }));
@@ -652,9 +788,10 @@ createApp({
                             return [{ value: 1, name: '暂无数据', itemStyle: { color: 'rgba(255,255,255,0.05)' } }];
                         }
                         const colors = { 
-                            '新签': new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#6366f1' }, { offset: 1, color: '#8b5cf6' }]),
-                            '续报': new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#06b6d4' }, { offset: 1, color: '#0891b2' }]),
-                            '转介绍': new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#ec4899' }, { offset: 1, color: '#d946ef' }])
+                            '新签': '#3b82f6',
+                            '续报': '#8b5cf6',
+                            '扩科': '#f59e0b',
+                            '其他': '#64748b'
                         };
                         return data.filter(d => d.value > 0).map(d => ({ ...d, itemStyle: { color: colors[d.name] } }));
                     };
@@ -666,40 +803,54 @@ createApp({
                             trigger: 'item', 
                             formatter: (params) => {
                                 if (params.name === '暂无数据') {
-                                    return `<div class="text-slate-400">当前时间段暂无报课数据</div>`;
+                                    return `<div style="color:#64748b">当前时间段暂无报课数据</div>`;
                                 }
-                                return `<div class="font-bold mb-1 text-white">${params.name}</div>
-                                        <div class="flex justify-between gap-6">
-                                            <span class="text-slate-400">业绩金额:</span>
-                                            <span class="text-white font-mono font-bold">¥${params.value.toLocaleString()}</span>
-                                        </div>
-                                        <div class="flex justify-between gap-6">
-                                            <span class="text-slate-400">营收占比:</span>
-                                            <span class="text-cyan-400 font-mono font-bold">${params.percent}%</span>
-                                        </div>`;
+                                return `<div style="font-weight:bold;margin-bottom:4px;color:${params.color}">${params.name}</div>
+                                        <div>业绩金额: <span style="font-weight:bold">¥${params.value.toLocaleString()}</span></div>
+                                        <div>营收占比: <span style="color:#06b6d4;font-weight:bold">${params.percent}%</span></div>`;
                             }
                         },
                         legend: { 
                             orient: 'vertical', 
-                            right: '0%', 
+                            right: '5%', 
                             top: 'center', 
-                            itemWidth: 8, 
-                            itemHeight: 8, 
-                            textStyle: { color: '#94a3b8', fontSize: 10 }, 
+                            itemWidth: 10, 
+                            itemHeight: 10, 
+                            textStyle: { color: '#94a3b8', fontSize: 11 }, 
                             icon: 'circle',
-                            itemGap: 10
+                            itemGap: 12
                         },
                         series: [{
                             type: 'pie',
-                            radius: ['60%', '85%'],
+                            radius: ['40%', '65%'],
                             center: ['35%', '50%'],
                             avoidLabelOverlap: false,
-                            itemStyle: { borderRadius: 8, borderColor: '#0f172a', borderWidth: 2 },
-                            label: { show: false },
+                            itemStyle: { 
+                                borderRadius: 6, 
+                                borderColor: '#0f172a', 
+                                borderWidth: 2 
+                            },
+                            label: { 
+                                show: true,
+                                position: 'center',
+                                formatter: () => `{total|¥${formatNumber(kpis.total_revenue)}\n}{label|总业绩}`,
+                                rich: {
+                                    total: { 
+                                        fontSize: 16, 
+                                        fontWeight: 700, 
+                                        color: '#fff',
+                                        lineHeight: 22
+                                    },
+                                    label: { 
+                                        fontSize: 10, 
+                                        color: '#64748b',
+                                        lineHeight: 14
+                                    }
+                                }
+                            },
                             emphasis: {
                                 scale: true,
-                                scaleSize: 5,
-                                itemStyle: { shadowBlur: 15, shadowColor: 'rgba(0,0,0,0.5)' }
+                                scaleSize: 5
                             },
                             data: getEnrollmentPieData()
                         }]
@@ -709,7 +860,7 @@ createApp({
                 }
             }
 
-            // --- 4. Leads Chart (Vibrant Sparkline) ---
+            // --- 4. Leads Chart (Vibrant Sparkline) - 升级版 ---
             if (leadsChart) {
                 try {
                     const year = effectiveYear.value;
@@ -746,19 +897,10 @@ createApp({
                             emphasis: { disabled: true },
                             lineStyle: { 
                                 width: 3, 
-                                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                                    { offset: 0, color: '#f59e0b' },
-                                    { offset: 0.5, color: '#ec4899' },
-                                    { offset: 1, color: '#8b5cf6' }
-                                ]),
-                                shadowBlur: 15,
-                                shadowColor: 'rgba(245, 158, 11, 0.4)'
+                                color: '#f59e0b'
                             },
                             areaStyle: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                    { offset: 0, color: 'rgba(245, 158, 11, 0.15)' },
-                                    { offset: 1, color: 'rgba(245, 158, 11, 0)' }
-                                ])
+                                color: 'rgba(245, 158, 11, 0.2)'
                             }
                         }]
                     });
@@ -767,7 +909,7 @@ createApp({
                 }
             }
 
-            // --- 5. Consumption Chart ---
+            // --- 5. Consumption Chart - 升级版 ---
             if (consumptionChart) {
                 try {
                     const target = kpis.consumption_target;
@@ -778,10 +920,10 @@ createApp({
                             ...chartTheme.tooltip,
                             trigger: 'item',
                             formatter: (params) => {
-                                const label = params.name === '已消' ? '已消耗业绩' : '剩余目标业绩';
+                                const label = params.name === '已消' ? '已消耗金额' : '剩余目标金额';
                                 const colorClass = params.name === '已消' ? 'text-cyan-400' : 'text-slate-400';
-                                return `<div class="font-bold mb-1 text-white">课消进度</div>
-                                        <div class="flex justify-between gap-6">
+                                return `<div class="font-bold mb-2 text-white text-base">课消进度</div>
+                                        <div class="flex justify-between gap-8 mb-1">
                                             <span class="text-slate-400">${label}:</span>
                                             <span class="${colorClass} font-mono font-bold">¥${params.value.toLocaleString()}</span>
                                         </div>`;
@@ -789,28 +931,40 @@ createApp({
                         },
                         series: [{
                             type: 'pie',
-                            radius: ['75%', '90%'],
+                            radius: ['70%', '85%'],
                             center: ['50%', '50%'],
                             avoidLabelOverlap: false,
                             label: {
                                 show: true,
                                 position: 'center',
-                                formatter: () => `{val|${progress.toFixed(2)}%}\n{label|完成率}`,
+                                formatter: () => `{val|${progress.toFixed(1)}%}\n{label|完成率}`,
                                 rich: {
-                                    val: { fontSize: 20, fontWeight: '800', color: '#06b6d4', padding: [0, 0, 5, 0] },
-                                    label: { fontSize: 10, color: '#64748b' }
+                                    val: { 
+                                        fontSize: 20, 
+                                        fontWeight: 700, 
+                                        color: '#06b6d4',
+                                        padding: [0, 0, 5, 0] 
+                                    },
+                                    label: { fontSize: 11, color: '#64748b' }
                                 }
                             },
-                            itemStyle: { borderRadius: 10 },
-                            emphasis: { scale: false },
+                            itemStyle: { 
+                                borderRadius: 8,
+                                borderColor: '#0f172a',
+                                borderWidth: 2
+                            },
+                            emphasis: { 
+                                scale: true,
+                                scaleSize: 5
+                            },
                             data: [
                                 { 
                                     value: kpis.total_consumption_amount, name: '已消', 
-                                    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#06b6d4' }, { offset: 1, color: '#6366f1' }]) } 
+                                    itemStyle: { color: '#06b6d4' } 
                                 },
                                 { 
                                     value: Math.max(0, target - kpis.total_consumption_amount), name: '剩余', 
-                                    itemStyle: { color: 'rgba(255,255,255,0.05)' } 
+                                    itemStyle: { color: 'rgba(255,255,255,0.1)' } 
                                 }
                             ]
                         }]
@@ -827,6 +981,13 @@ createApp({
                 });
             }, 200);
         };
+
+        // Watch for data changes and re-render charts
+        watch([enrollmentData, experienceData, consumptionData], () => {
+            nextTick(() => {
+                initCharts();
+            });
+        }, { deep: true });
 
         const getLineAreaOption = (xAxisData, seriesData, color) => ({
             animationDuration: 2000,
@@ -854,16 +1015,11 @@ createApp({
             if (isSyncing.value) return;
             isSyncing.value = true;
             
-            // 添加 UI 反馈提示
             const originalTitle = document.title;
             document.title = "正在同步数据...";
             
             try {
-                // 使用灵活的 API 域名判断
-                let apiHost = window.location.hostname;
-                if (!apiHost || apiHost === '::1') apiHost = '127.0.0.1';
-                
-                const apiPath = `${window.location.protocol}//${apiHost}:3001/sync`;
+                const apiPath = 'http://127.0.0.1:3001/sync';
                 console.log('Attempting sync to:', apiPath);
 
                 const response = await fetch(apiPath, {
@@ -872,13 +1028,11 @@ createApp({
                         'Accept': 'application/json',
                         'Content-Type': 'application/json'
                     },
-                    mode: 'cors',
-                    credentials: 'include'
+                    mode: 'cors'
                 });
                 
                 const data = await response.json();
                 if (data.status === 'success') {
-                    // 同步成功后先更新本地显示
                     lastUpdateTime.value = dayjs().format('HH:mm:ss');
                     alert('同步成功！页面将刷新以加载最新数据。');
                     location.reload(); 
@@ -887,7 +1041,7 @@ createApp({
                 }
             } catch (error) {
                 console.error('Sync error details:', error);
-                alert('连接同步服务器失败！\n\n请检查：\n1. server.py 是否已启动\n2. 3001 端口是否被占用\n3. 浏览器是否拦截了请求');
+                alert('连接同步服务器失败！\n\n请检查：\n1. server.py 是否已启动（运行 python3 server.py）\n2. 3001 端口是否被占用\n3. 浏览器是否拦截了请求');
             } finally {
                 isSyncing.value = false;
                 document.title = originalTitle;

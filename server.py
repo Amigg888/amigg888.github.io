@@ -41,8 +41,11 @@ CORS(app, supports_credentials=True, resources={
             "http://127.0.0.1:5501",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            "http://localhost:8088",
+            "http://127.0.0.1:8088",
             "http://192.168.110.17:5500",
             "http://192.168.110.17:5501",
+            "http://192.168.110.17:8088",
             "null",
             "*"
         ],
@@ -61,10 +64,16 @@ def add_cors_headers(response):
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Origin, Accept, X-Requested-With'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
-    elif request.method == 'OPTIONS':
-        # 处理没有 Origin 头的 OPTIONS 请求 (罕见但可能)
+    else:
         response.headers['Access-Control-Allow-Origin'] = '*'
     return response
+
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.status_code = 200
+        return response
 
 @app.before_request
 def debug_request():

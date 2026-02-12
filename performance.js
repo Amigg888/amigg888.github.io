@@ -1,4 +1,11 @@
-const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+console.log('Performance script loading...');
+const initApp = () => {
+    console.log('Performance initApp starting...');
+    if (typeof Vue === 'undefined') {
+        console.error('Vue is not loaded!');
+        return;
+    }
+    const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
 
 createApp({
     setup() {
@@ -325,7 +332,7 @@ createApp({
                     else if (rate >= 0.50) score = 18;
                     else score = 0;
                     calculationSteps[id].push(`续费率 ${(rate * 100).toFixed(1)}%，基础计分阶梯匹配得分 ${score}分`);
-                    if (rate >= 1 && dueStudents >= 3) calculationSteps[id].push('满足“应续费>=3人且续费率100%”，获得额外加分 5分');
+                    if (rate >= 1 && dueStudents >= 3) calculationSteps[id].push('满足"应续费>=3人且续费率100%"，获得额外加分 5分');
                 }
             } else if (id === 'attendance') {
                 const { dueClasses, actualClasses } = data;
@@ -538,3 +545,10 @@ createApp({
         };
     }
 }).mount('#app');
+};
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

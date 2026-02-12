@@ -94,19 +94,71 @@ createApp({
         const filteredExperienceDetails = computed(() => {
             let data = experienceDetails.value;
             
-            // Filter by global date
+            // 主数据：体验课时间在当期的学员
+            let mainData = [];
             if (globalFilter.type === 'year') {
-                data = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.year));
+                mainData = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.year));
             } else {
-                data = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.month));
+                mainData = data.filter(item => item.体验课时间 && item.体验课时间.startsWith(globalFilter.month));
             }
+            
+            // 补充数据：体验时间不在当期，但报课时间在当期的学员
+            let supplementaryData = [];
+            const enrolledStudents = data.filter(i => i.状态 === '已报课');
+            supplementaryData = enrolledStudents.filter(exp => {
+                const enrollment = enrollmentDetails.value.find(e => e.学员姓名 === exp.学员姓名);
+                if (!enrollment) return false;
+                const enrollDate = enrollment.报课时间;
+                if (!enrollDate) return false;
+                
+                // 报课时间在当期
+                let enrollInPeriod = false;
+                if (globalFilter.type === 'year') {
+                    enrollInPeriod = enrollDate.startsWith(globalFilter.year);
+                } else {
+                    enrollInPeriod = enrollDate.startsWith(globalFilter.month);
+                }
+                
+                // 但体验时间不在当期
+                let expNotInPeriod = false;
+                if (globalFilter.type === 'year') {
+                    expNotInPeriod = !exp.体验课时间 || !exp.体验课时间.startsWith(globalFilter.year);
+                } else {
+                    expNotInPeriod = !exp.体验课时间 || !exp.体验课时间.startsWith(globalFilter.month);
+                }
+                
+                return enrollInPeriod && expNotInPeriod;
+            }).map(item => ({
+                ...item,
+                _isSupplementary: true  // 标记为补充数据
+            }));
+            
+            // 合并数据（补充数据放在前面，方便识别）
+            const combinedData = [...supplementaryData, ...mainData];
+            
             // Normalize teacher names in the returned data
-            return data.map(item => ({
+            return combinedData.map(item => ({
                 ...item,
                 邀约老师: normalizeTeacherName(item.邀约老师),
                 体验课老师: normalizeTeacherName(item.体验课老师)
             }));
         });
+
+        // 计算体验转化人数（按报课时间过滤）
+        const getEnrolledCountByEnrollTime = () => {
+            const enrolledStudents = experienceDetails.value.filter(i => i.状态 === '已报课');
+            return enrolledStudents.filter(exp => {
+                const enrollment = enrollmentDetails.value.find(e => e.学员姓名 === exp.学员姓名);
+                if (!enrollment) return false;
+                const enrollDate = enrollment.报课时间;
+                if (!enrollDate) return false;
+                if (globalFilter.type === 'year') {
+                    return enrollDate.startsWith(globalFilter.year);
+                } else {
+                    return enrollDate.startsWith(globalFilter.month);
+                }
+            }).length;
+        };
 
         const searchedExperienceDetails = computed(() => {
             let data = filteredExperienceDetails.value;
@@ -235,9 +287,7 @@ createApp({
                     item.状态 === '已体验' || item.状态 === '已报课'
                 ).length;
             }),
-            exp_enrolled: computed(() => {
-                return filteredExperienceDetails.value.filter(item => item.状态 === '已报课').length;
-            }),
+            exp_enrolled: computed(() => getEnrolledCountByEnrollTime()),
             exp_conv_rate: computed(() => {
                 const attended = kpis.exp_attended;
                 if (!attended || attended === 0) return 0;
@@ -648,7 +698,7 @@ createApp({
             if (selFunnelTeacher === 'all') {
                 invitedCount = filteredExperienceDetails.value.length;
                 attendedCount = filteredExperienceDetails.value.filter(item => item.状态 === '已体验' || item.状态 === '已报课').length;
-                enrolledCount = filteredExperienceDetails.value.filter(item => item.状态 === '已报课').length;
+                enrolledCount = getEnrolledCountByEnrollTime();
             } else {
                 // 筛选特定老师时：
                 // 1. 邀约数取自该老师作为“邀约老师”的数据
@@ -657,7 +707,19 @@ createApp({
                 // 2. 到访和报课取自该老师作为“体验课老师”的数据
                 const teacherExpRecords = filteredExperienceDetails.value.filter(item => item.体验课老师 === selFunnelTeacher);
                 attendedCount = teacherExpRecords.filter(item => item.状态 === '已体验' || item.状态 === '已报课').length;
-                enrolledCount = teacherExpRecords.filter(item => item.状态 === '已报课').length;
+                // 3. 报课人数按报课时间过滤
+                const teacherEnrolledStudents = teacherExpRecords.filter(i => i.状态 === '已报课');
+                enrolledCount = teacherEnrolledStudents.filter(exp => {
+                    const enrollment = enrollmentDetails.value.find(e => e.学员姓名 === exp.学员姓名);
+                    if (!enrollment) return false;
+                    const enrollDate = enrollment.报课时间;
+                    if (!enrollDate) return false;
+                    if (globalFilter.type === 'year') {
+                        return enrollDate.startsWith(globalFilter.year);
+                    } else {
+                        return enrollDate.startsWith(globalFilter.month);
+                    }
+                }).length;
             }
 
             // 为了在漏斗图中正确显示（即使第一层比第二层小），我们使用真实数值

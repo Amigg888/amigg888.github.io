@@ -8,7 +8,7 @@
     <script src="lib/vue.global.js"></script>
     <script src="lib/dayjs.min.js"></script>
     <!-- Auth Guard -->
-    <script src="auth-guard.js"></script>
+    <script src="auth-guard.js?v=2026-02-13"></script>
     
     <!-- Libraries -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -23,7 +23,9 @@
         });
     </script>
     <style>
-        [v-cloak] { display: none; }
+        [v-cloak] { display: none !important; }
+        /* Ensure modal is hidden before Vue loads */
+        #app[v-cloak] [v-show], #app[v-cloak] [v-if] { display: none !important; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .data-table th { white-space: nowrap; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.02em; padding: 10px 4px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; text-align: center; }
         .data-table td { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; font-size: 12px; text-align: center; }
@@ -415,7 +417,7 @@
         </main>
 
         <!-- History Modal -->
-        <div v-if="showHistory" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" @click.self="showHistory = false">
+        <div v-show="showHistory" class="fixed inset-0 z-[100] items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" @click.self="showHistory = false">
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-popover-in">
                 <!-- Modal Header -->
                 <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between">

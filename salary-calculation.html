@@ -9,7 +9,7 @@
     <script src="lib/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <!-- Auth Guard -->
-    <script src="auth-guard.js"></script>
+    <script src="auth-guard.js?v=2026-02-13"></script>
     <style>
         [v-cloak] { display: none; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -127,39 +127,8 @@
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
     <div id="app" v-cloak class="min-h-screen">
-        <!-- Password Protection Overlay -->
-        <div v-if="!isAuthorized" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center transform transition-all">
-                <div class="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                    </svg>
-                </div>
-                <h3 class="text-2xl font-black text-slate-800 mb-2">访问受限</h3>
-                <p class="text-slate-500 text-sm mb-8 font-medium">请输入管理密码以查看工资数据</p>
-                
-                <div class="space-y-4">
-                    <input type="password" v-model="inputPassword" @keyup.enter="checkPassword" 
-                           placeholder="输入访问密码"
-                           class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                           :class="{'border-red-500 bg-red-50': passwordError}">
-                    
-                    <button @click="checkPassword" 
-                            class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">
-                        验证访问
-                    </button>
-                    
-                    <p v-if="passwordError" class="text-red-500 text-xs font-bold animate-bounce mt-2">密码错误，请重试</p>
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <a href="index.html" class="text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors">返回仪表盘</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Layout (Only visible when authorized) -->
-        <div v-if="isAuthorized" class="flex min-h-screen">
+        <!-- Main Layout -->
+        <div class="flex min-h-screen">
             <!-- Sidebar Navigation -->
             <aside :class="['w-52 bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 h-screen z-50', isMobileMenuOpen ? 'mobile-active' : '']">
             <div class="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -353,7 +322,7 @@
                                             </div>
 
                                             <span v-else :class="col.key === 'netPay' ? 'text-indigo-600 font-black' : ''">
-                                                {{ formatMoney(tableData[id][col.key]) }}
+                                                {{ col.key === 'socialSecurity' ? '-' + formatMoney(tableData[id][col.key]) : formatMoney(tableData[id][col.key]) }}
                                             </span>
                                         </td>
                                     </tr>
@@ -420,7 +389,7 @@
                                             )">
                                                 {{ 
                                                     (tableData[id].isTeachingDisabled && ['conversionBonus', 'classCommission', 'performanceBonus'].includes(col.key))
-                                                    ? '-' : formatMoney(tableData[id][col.key]) 
+                                                    ? '-' : (col.key === 'socialSecurity' ? '-' + formatMoney(tableData[id][col.key]) : formatMoney(tableData[id][col.key]))
                                                 }}
                                             </span>
                                         </td>
@@ -525,7 +494,7 @@
                                                 </span>
                                             </div>
                                             <span v-else :class="col.key === 'netPay' ? 'text-indigo-400' : ''">
-                                                {{ formatMoney(grandTotal[col.key]) }}
+                                                {{ col.key === 'socialSecurity' ? '-' + formatMoney(grandTotal[col.key]) : formatMoney(grandTotal[col.key]) }}
                                             </span>
                                         </td>
                                 </tr>
@@ -570,91 +539,88 @@
     </div>
 
     <!-- Hidden Salary Card for Image Export -->
-    <div id="salary-card-template" v-if="copyingId" class="fixed -left-[9999px] top-0" style="font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;">
-        <div class="w-[420px] bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col" id="salary-card-content">
+    <div id="salary-card-template" v-if="copyingId" class="fixed -left-[9999px] top-0" style="font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;">
+        <div class="w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col" id="salary-card-content" style="box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
             <!-- Card Content -->
-            <div class="p-8 flex flex-col gap-6">
-                <!-- Header: Photo & Name -->
-                <div class="flex items-center gap-6">
-                    <!-- Avatar with Glow -->
-                    <div class="relative group">
-                        <div class="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-                        <div class="relative w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center">
-                            <img v-if="teacherImages[tableData[copyingId]?.name]" 
-                                 :src="teacherImages[tableData[copyingId]?.name]" 
-                                 class="w-full h-full object-cover">
-                            <div v-else class="text-2xl font-black text-slate-300 leading-none flex items-center justify-center w-full h-full">{{ tableData[copyingId]?.name?.charAt(0) }}</div>
-                        </div>
-                    </div>
-
-                    <!-- Info & Net Pay -->
-                    <div class="flex-1 flex flex-col gap-3">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h2 class="text-2xl font-[1000] text-slate-800 tracking-tight leading-none">{{ tableData[copyingId]?.name }}</h2>
-                                <p class="text-indigo-500/80 text-[10px] font-black uppercase tracking-[0.2em] mt-2">{{ currentMonth }} 结算单</p>
+            <div class="p-5 flex flex-col gap-3">
+                <!-- Top Section: Teacher Info & Net Pay Side by Side -->
+                <div class="relative bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white overflow-hidden">
+                    <!-- Decorative Element -->
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    
+                    <div class="relative flex items-center justify-between gap-4">
+                        <!-- Left: Teacher Info -->
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 rounded-full border-2 border-white/30 overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
+                                <img v-if="teacherImages[tableData[copyingId]?.name]" 
+                                     :src="teacherImages[tableData[copyingId]?.name]" 
+                                     class="w-full h-full object-cover">
+                                <div v-else class="text-lg font-bold text-white">{{ tableData[copyingId]?.name?.charAt(0) }}</div>
                             </div>
-                            <div class="text-right">
-                                <p class="text-slate-400 text-[8px] font-black uppercase tracking-wider mb-0.5">实发工资</p>
-                                <div class="flex items-baseline justify-end gap-0.5">
-                                    <span class="text-indigo-600 text-xs font-black">¥</span>
-                                    <span class="text-2xl font-[900] text-slate-900 tabular-nums tracking-tighter">{{ formatMoney(tableData[copyingId]?.netPay) }}</span>
+                            <div class="flex flex-col pt-0.5">
+                                <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0; line-height: 1.3;">{{ tableData[copyingId]?.name }}</h2>
+                                <div class="flex items-center gap-3 mt-2.5">
+                                    <span class="text-[10px] text-white/80 font-medium">{{ currentMonth }}</span>
+                                    <span class="text-[10px] text-white/40">·</span>
+                                    <span class="text-[10px] text-white/70">{{ tableData[copyingId]?.isPartTime ? '兼职' : '全职' }}</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Mini Badges -->
-                        <div class="flex flex-wrap gap-1.5">
-                            <div class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100/50 flex items-center gap-1">
-                                <div class="w-1 h-1 rounded-full bg-indigo-500"></div>
-                                <span class="text-[9px] font-black text-indigo-700 uppercase">{{ tableData[copyingId]?.isPartTime ? '兼职' : '全职' }}</span>
-                            </div>
-                            <div v-if="tableData[copyingId]?.isSummary" class="px-2 py-0.5 rounded-md bg-purple-50 border border-purple-100/50 flex items-center gap-1">
-                                <div class="w-1 h-1 rounded-full bg-purple-500"></div>
-                                <span class="text-[9px] font-black text-purple-700 uppercase">多校区</span>
+                        <!-- Right: Net Pay -->
+                        <div class="text-right shrink-0">
+                            <p class="text-white/60 text-[10px] font-medium leading-none">实发工资</p>
+                            <div class="flex items-baseline justify-end gap-0.5 mt-1">
+                                <span class="text-sm font-medium text-white/70">¥</span>
+                                <span class="text-2xl font-bold tracking-tight leading-none">{{ formatMoney(tableData[copyingId]?.netPay).split('.')[0] }}</span>
+                                <span class="text-sm font-medium text-white/70">.{{ formatMoney(tableData[copyingId]?.netPay).split('.')[1] }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Details Panel -->
-                <div class="grid grid-cols-1 gap-1">
-                    <template v-for="col in columns" :key="col.key">
-                        <div v-if="shouldShowInCard(copyingId, col.key) && col.key !== 'netPay'" 
-                             class="group flex flex-col py-2 px-3 rounded-xl transition-all duration-300 hover:bg-slate-50 border border-transparent hover:border-slate-100">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-1 h-1 rounded-full bg-slate-200 group-hover:bg-indigo-400 transition-colors"></div>
-                                    <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900">{{ col.label }}</span>
+                <!-- Salary Details with Formulas -->
+                <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="px-4 py-2 bg-slate-100 border-b border-slate-200">
+                        <span class="text-xs font-bold text-slate-600 tracking-wide">工资明细</span>
+                    </div>
+                    
+                    <div class="divide-y divide-slate-200">
+                        <template v-for="col in columns" :key="col.key">
+                            <div v-if="shouldShowInCard(copyingId, col.key) && col.key !== 'netPay' && col.key !== 'grossPay'" 
+                                 class="px-4 py-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-slate-600">{{ col.label }}</span>
+                                    <span class="text-sm font-bold" :class="col.key === 'adjustments' && tableData[copyingId][col.key] < 0 ? 'text-red-500' : 'text-slate-800'">
+                                        {{ col.key === 'attendance' ? `${tableData[copyingId].actualAttend || 0}/${tableData[copyingId].shouldAttend || 0}天` : (col.key === 'socialSecurity' ? '-' + formatMoney(tableData[copyingId][col.key]) : formatMoney(tableData[copyingId][col.key])) }}
+                                    </span>
                                 </div>
-                                <span class="text-sm font-[900] text-slate-800 tabular-nums tracking-tight">
-                                    {{ col.key === 'attendance' ? (tableData[copyingId].actualAttend || 0) : formatMoney(tableData[copyingId][col.key]) }}
-                                    <span v-if="col.key === 'attendance'" class="text-[9px] font-bold text-slate-400 ml-0.5">/ {{ tableData[copyingId].shouldAttend || 0 }} 天</span>
-                                </span>
+                                <!-- Formula -->
+                                <div v-if="getFormula(copyingId, col.key)" class="mt-1 text-[10px] text-slate-400 leading-snug">
+                                    {{ getFormula(copyingId, col.key) }}
+                                </div>
                             </div>
-                            
-                            <!-- Formula: Only content, tight spacing -->
-                            <div v-if="getFormula(copyingId, col.key)" 
-                                 class="text-[9px] text-slate-400 pl-3 mt-0.5 font-medium leading-relaxed italic opacity-80 group-hover:opacity-100 transition-opacity">
-                                {{ getFormula(copyingId, col.key) }}
+                        </template>
+                    </div>
+                    
+                    <!-- Net Pay Summary Row -->
+                    <div class="px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-t border-indigo-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-indigo-600">实发工资</span>
+                                <div v-if="getFormula(copyingId, 'netPay')" class="mt-0.5 text-[10px] text-indigo-400 leading-snug">
+                                    {{ getFormula(copyingId, 'netPay') }}
+                                </div>
                             </div>
+                            <span class="text-lg font-bold text-indigo-600">¥{{ formatMoney(tableData[copyingId]?.netPay) }}</span>
                         </div>
-                    </template>
+                    </div>
                 </div>
 
                 <!-- Footer -->
-                <div class="mt-2 pt-6 border-t border-slate-100 flex flex-col items-center gap-3">
-                    <p class="text-[10px] font-bold text-slate-400 flex items-center gap-2">
-                        <span class="w-6 h-px bg-slate-200"></span>
-                        核对无误后请回复，谢谢
-                        <span class="w-6 h-px bg-slate-200"></span>
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 rounded-lg bg-slate-900 flex items-center justify-center">
-                            <span class="text-[8px] font-black text-white">SD</span>
-                        </div>
-                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">声度星主持数据报表</span>
-                    </div>
+                <div class="pt-2 flex items-center justify-between">
+                    <p class="text-[10px] text-slate-400 leading-tight">核对无误请回复，如有疑问请沟通</p>
+                    <span class="text-[10px] font-medium text-slate-400">声度星主持</span>
                 </div>
             </div>
         </div>
@@ -807,6 +773,6 @@
     <script src="data-2025.js"></script>
     <script src="data-2026.js"></script>
     <script src="preset-data.js"></script>
-    <script src="salary-calculation.js"></script>
+    <script src="salary-calculation.js?v=2026-02-13-03"></script>
 </body>
 </html>

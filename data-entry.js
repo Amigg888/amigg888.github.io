@@ -521,11 +521,9 @@ const initApp = () => {
             });
 
             onMounted(() => {
-                // 确保初始化时 Modal 是关闭的
                 showHistory.value = false;
                 initData();
                 loadHistoryRecords();
-                // 初始化 Lucide 图标
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }

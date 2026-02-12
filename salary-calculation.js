@@ -9,7 +9,7 @@ const initApp = () => {
 
     createApp({
         setup() {
-            const isAuthorized = ref(false); // Default to false for security
+            const isAuthorized = ref(true); // 已移除密码验证
             const inputPassword = ref('');
             const passwordError = ref(false);
 
@@ -157,7 +157,7 @@ const initApp = () => {
                 { key: 'salesCommission', label: '业绩提成', width: '85px' },
                 { key: 'performanceBonus', label: '绩效奖金', width: '85px' },
                 { key: 'grossPay', label: '应发工资', width: '85px' },
-                { key: 'socialSecurity', label: '社保', width: '85px' },
+                { key: 'socialSecurity', label: '社保代扣', width: '85px' },
                 { key: 'adjustments', label: '其他', width: '85px' },
                 { key: 'netPay', label: '实发工资', width: '85px' }
             ];
@@ -490,18 +490,35 @@ const initApp = () => {
                         'qq': '琪琪老师'
                     };
 
-                    // Filter for teachers
+                    // 用户名到老师ID的映射
+                    const userNameToIds = {
+                        '小花老师': ['xh_la', 'xh_ch'],
+                        '桃子老师': ['tz'],
+                        '柚子老师': ['yz'],
+                        '小草老师': ['xc'],
+                        '琪琪老师': ['qq']
+                    };
+
+                    // Filter for teachers based on user role
                     let filteredTeachers = teachersList;
+                    let canSeePartTime = currentUser.value.role === 'admin'; // 只有管理员可以看到兼职老师数据
+                    
                     if (currentUser.value.role === 'teacher') {
-                        // Match by teacher name prefix
-                        filteredTeachers = teachersList.filter(t => 
-                            teacherDisplayNames[t].includes(currentUser.value.name)
-                        );
+                        // 获取当前用户可查看的老师ID列表
+                        const allowedIds = userNameToIds[currentUser.value.name] || [];
+                        filteredTeachers = teachersList.filter(t => allowedIds.includes(t));
+                        console.log(`教师用户 ${currentUser.value.name} 可查看的数据:`, filteredTeachers);
                     }
 
                     // Remove other teachers if they exist in tableData (cleanup)
+                    // 注意：qq (琪琪老师) 是兼职老师，只有管理员可见
                     Object.keys(tableData).forEach(key => {
-                        if (key !== '小花老师' && !filteredTeachers.includes(key) && !['xh_la', 'xh_ch'].includes(key)) {
+                        // 非管理员不能看到琪琪老师
+                        if (key === 'qq' && !canSeePartTime) {
+                            delete tableData[key];
+                        }
+                        // 其他老师的清理逻辑
+                        else if (key !== '小花老师' && key !== 'qq' && !filteredTeachers.includes(key) && !['xh_la', 'xh_ch'].includes(key)) {
                              delete tableData[key];
                         }
                     });
@@ -608,32 +625,35 @@ const initApp = () => {
                         };
                     });
 
-                    const qiqiId = 'qq';
-                    const qiqiManual = manualData[qiqiId] || {};
-                    const qiqiHours = Number(qiqiManual.classHours || 0);
-                    const qiqiRate = Number(qiqiManual.hourlyRate || 0);
-                    const qiqiCommission = qiqiRate * 0.5; // 琪琪老师的课时工资是课时金额的50%
+                    // 琪琪老师数据只有管理员可见
+                    if (canSeePartTime) {
+                        const qiqiId = 'qq';
+                        const qiqiManual = manualData[qiqiId] || {};
+                        const qiqiHours = Number(qiqiManual.classHours || 0);
+                        const qiqiRate = Number(qiqiManual.hourlyRate || 0);
+                        const qiqiCommission = qiqiRate * 0.5; // 琪琪老师的课时工资是课时金额的50%
 
-                    tableData[qiqiId] = {
-                        id: qiqiId,
-                        name: '琪琪老师',
-                        isPartTime: true,
-                        shouldAttend: 0,
-                        actualAttend: 0,
-                        classHours: qiqiHours,
-                        hourlyRate: qiqiRate,
-                        classCommission: qiqiCommission,
-                        baseSalary: 0,
-                        inviteBonus: 0,
-                        conversionBonus: 0,
-                        salesCommission: 0,
-                        performanceBonus: 0,
-                        socialSecurity: 0,
-                        adjustments: qiqiManual.adjustments || 0,
-                        adjustmentList: qiqiManual.adjustmentList || [],
-                        get grossPay() { return this.classCommission; },
-                        get netPay() { return this.classCommission + Number(this.adjustments || 0); }
-                    };
+                        tableData[qiqiId] = {
+                            id: qiqiId,
+                            name: '琪琪老师',
+                            isPartTime: true,
+                            shouldAttend: 0,
+                            actualAttend: 0,
+                            classHours: qiqiHours,
+                            hourlyRate: qiqiRate,
+                            classCommission: qiqiCommission,
+                            baseSalary: 0,
+                            inviteBonus: 0,
+                            conversionBonus: 0,
+                            salesCommission: 0,
+                            performanceBonus: 0,
+                            socialSecurity: 0,
+                            adjustments: qiqiManual.adjustments || 0,
+                            adjustmentList: qiqiManual.adjustmentList || [],
+                            get grossPay() { return this.classCommission; },
+                            get netPay() { return this.classCommission + Number(this.adjustments || 0); }
+                        };
+                    }
 
                     // 4. 小花老师汇总
                     const xh_la = tableData['xh_la'];
@@ -901,8 +921,8 @@ const initApp = () => {
 
                         // 使用 html2canvas 生成图片
                         html2canvas(element, {
-                            backgroundColor: "#ffffff",
-                            scale: 3, // 提高到 3 倍，确保文字和圆角非常清晰
+                            backgroundColor: null,
+                            scale: 2.5,
                             useCORS: true,
                             logging: false,
                             allowTaint: true,
@@ -913,7 +933,7 @@ const initApp = () => {
                                 if (clonedElement) {
                                     clonedElement.style.position = 'static';
                                     clonedElement.style.display = 'flex';
-                                    clonedElement.style.width = '420px'; // 保持原始设计宽度
+                                    clonedElement.style.width = '420px';
                                 }
                             }
                         }).then(canvas => {

@@ -100,6 +100,15 @@
             return;
         }
 
+        // 教师头像映射
+        const teacherAvatars = {
+            '小花老师': 'img/小花老师.png',
+            '小草老师': 'img/小草老师.png',
+            '柚子老师': 'img/柚子老师.png',
+            '桃子老师': 'img/桃子老师.png'
+        };
+        const userAvatar = teacherAvatars[user.name] || 'img/logo.png';
+
         // 使用事件委托处理退出按钮，防止 DOM 重绘导致监听器失效
         if (!window.__authEventBound) {
             document.addEventListener('click', (e) => {
@@ -132,24 +141,47 @@
 
             const userPanel = document.createElement('div');
             userPanel.id = 'user-panel';
-            userPanel.className = 'flex items-center gap-3 ml-4 pl-4 border-l border-slate-200/20';
+            // 添加 shrink-0 防止被压缩，添加 self-center 确保垂直居中
+            userPanel.className = 'flex items-center gap-3 ml-4 pl-4 border-l border-slate-200/20 shrink-0 self-center';
             userPanel.innerHTML = `
                 <div class="flex flex-col items-end">
                     <span class="text-xs font-bold text-blue-400">${user.name || user.username}</span>
                     <span class="text-[10px] text-slate-400">${user.role === 'admin' ? '总管理员' : '教师'}</span>
                 </div>
-                <button id="logoutBtn" class="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all shadow-sm" title="退出登录">
+                <img src="${userAvatar}" alt="${user.name || user.username}" class="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30" onerror="this.src='img/logo.png'">
+                <button id="logoutBtn" class="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all shadow-sm shrink-0" title="退出登录">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                     </svg>
                 </button>
             `;
             
-            // 尝试寻找右侧按钮容器
-            const rightContainer = header.querySelector('.flex.items-center.gap-4:last-child') || 
-                                 header.querySelector('.flex.items-center:last-child') || 
-                                 header;
-            rightContainer.appendChild(userPanel);
+            // 尝试寻找右侧按钮容器 - 支持多种布局
+            // 优先查找包含多个元素的 flex 容器（通常是右侧操作区）
+            let rightContainer = null;
+            
+            // 查找所有可能的右侧容器
+            const possibleContainers = [
+                header.querySelector('.flex.items-center.gap-4:last-child'),
+                header.querySelector('.flex.items-center.gap-3:last-child'),
+                header.querySelector('.flex-wrap.items-center:last-child'),
+                header.querySelector('.flex.items-center:last-child')
+            ];
+            
+            // 选择包含子元素最多的容器（通常是右侧操作区）
+            for (const container of possibleContainers) {
+                if (container && container !== header) {
+                    if (!rightContainer || container.children.length > rightContainer.children.length) {
+                        rightContainer = container;
+                    }
+                }
+            }
+            
+            // 只有在找到包含多个子元素的 flex 容器时才注入
+            // 避免直接添加到 header 或添加到错误的位置
+            if (rightContainer && rightContainer.children.length >= 2) {
+                rightContainer.appendChild(userPanel);
+            }
         };
 
         // 初始注入
@@ -159,17 +191,36 @@
             injectUI();
         }
 
-        // 确保 body 存在后再观察
+        // 确保 body 存在后再观察 - 只在 user-panel 被移除时重新注入
         const startObserver = () => {
             if (!document.body) {
                 setTimeout(startObserver, 50);
                 return;
             }
             if (window.__authObserver) window.__authObserver.disconnect();
-            window.__authObserver = new MutationObserver(() => {
-                if (!document.getElementById('user-panel')) injectUI();
+            
+            window.__authObserver = new MutationObserver((mutations) => {
+                // 如果 user-panel 已存在，完全不需要处理
+                if (document.getElementById('user-panel')) return;
+                
+                // 检查是否有 user-panel 被移除（通过检查 removedNodes）
+                const wasUserPanelRemoved = mutations.some(m => 
+                    Array.from(m.removedNodes).some(n => 
+                        n.nodeType === 1 && (n.id === 'user-panel' || n.querySelector?.('#user-panel'))
+                    )
+                );
+                
+                // 只有在 user-panel 被移除且 header 存在时才重新注入
+                if (wasUserPanelRemoved && document.querySelector('header')) {
+                    injectUI();
+                }
             });
-            window.__authObserver.observe(document.body, { childList: true, subtree: true });
+            
+            // 观察整个文档，但只关注节点移除
+            window.__authObserver.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+            });
         };
         startObserver();
     }
