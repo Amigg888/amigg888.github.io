@@ -249,9 +249,6 @@ def get_work_data():
 
 @app.route('/work-data', methods=['POST'])
 def save_work_data():
-    if 'username' not in session:
-        return jsonify({"status": "error", "message": "未登录"}), 401
-    
     data = request.json
     month = data.get('month')
     table_data = data.get('data')
@@ -266,7 +263,8 @@ def save_work_data():
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(table_data, f, ensure_ascii=False, indent=4)
     
-    log_action(session['username'], "SAVE_WORK_DATA", f"保存了 {month} 的工作数据")
+    username = session.get('username', 'anonymous')
+    log_action(username, "SAVE_WORK_DATA", f"保存了 {month} 的工作数据")
     return jsonify({"status": "success"})
 
 @app.route('/work-history', methods=['GET'])

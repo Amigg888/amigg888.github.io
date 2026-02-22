@@ -16,7 +16,7 @@ const initApp = () => {
                 return name;
             };
 
-            const teachers = ['小花老师', '桃子老师', '柚子老师', '小草老师'];
+            const teachers = ['小花老师', '桃子老师', '柚子老师', '小草老师', '琪琪老师'];
             const expandedRows = reactive({ '小花老师': true });
             const currentMonth = ref(localStorage.getItem('selected_month') || '2026-01');
             const showDatePicker = ref(false);
@@ -86,7 +86,8 @@ const initApp = () => {
                 },
                 '桃子老师': { id: 'tz', name: '桃子老师' },
                 '柚子老师': { id: 'yz', name: '柚子老师' },
-                '小草老师': { id: 'xc', name: '小草老师', isTeachingDisabled: true }
+                '小草老师': { id: 'xc', name: '小草老师', isTeachingDisabled: true },
+                '琪琪老师': { id: 'qq', name: '琪琪老师', isPartTime: true }
             };
 
             const tableData = reactive({});
@@ -110,7 +111,8 @@ const initApp = () => {
                     'xh_ch': { name: '小花老师', campus: '昌化校区' },
                     'tz': { name: '桃子老师', campus: null },
                     'yz': { name: '柚子老师', campus: null },
-                    'xc': { name: '小草老师', campus: null }
+                    'xc': { name: '小草老师', campus: null },
+                    'qq': { name: '琪琪老师', campus: null, isPartTime: true }
                 };
 
                 Object.entries(idConfig).forEach(([id, config]) => {

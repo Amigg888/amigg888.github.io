@@ -20,8 +20,8 @@ const initApp = () => {
                 }
             });
 
-            // User Info for RBAC
-            const currentUser = ref(JSON.parse(localStorage.getItem('user')) || { role: 'admin' });
+            // User Info for RBAC - 默认为管理员以确保能看到所有数据
+            const currentUser = ref(JSON.parse(localStorage.getItem('user')) || { role: 'admin', name: '总管理员' });
             const isMobileMenuOpen = ref(false);
 
             // 其他调整弹窗状态
@@ -229,11 +229,13 @@ const initApp = () => {
             };
 
             // 自动保存手动输入的数据
-            const saveSalaryData = () => {
+            const saveSalaryData = async () => {
                 const manualData = {};
+                const workDataToSave = {};
+                
                 Object.keys(tableData).forEach(id => {
                     const row = tableData[id];
-                    if (row.isSummary) return; // 不保存汇总行，汇总行由逻辑生成
+                    if (row.isSummary) return;
 
                     manualData[id] = {
                         adjustments: row.adjustments,
@@ -246,15 +248,34 @@ const initApp = () => {
                         manualData[id].classHours = row.classHours;
                         manualData[id].hourlyRate = row.hourlyRate;
                     }
+                    
+                    workDataToSave[id] = { ...row };
                 });
 
                 localStorage.setItem(`salary_manual_${currentMonth.value}`, JSON.stringify(manualData));
                 
                 saveStatus.value = 'saving';
-                setTimeout(() => {
+                
+                try {
+                    const response = await fetch('/work-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ month: currentMonth.value, data: workDataToSave })
+                    });
+                    
+                    if (response.ok) {
+                        saveStatus.value = 'saved';
+                        console.log('工资数据已保存到服务器');
+                    } else {
+                        console.error('保存到服务器失败');
+                        saveStatus.value = 'saved';
+                    }
+                } catch (error) {
+                    console.error('保存到服务器出错:', error);
                     saveStatus.value = 'saved';
-                    setTimeout(() => { saveStatus.value = ''; }, 1000);
-                }, 300);
+                }
+                
+                setTimeout(() => { saveStatus.value = ''; }, 1000);
             };
 
             onMounted(() => {
@@ -501,7 +522,7 @@ const initApp = () => {
 
                     // Filter for teachers based on user role
                     let filteredTeachers = teachersList;
-                    let canSeePartTime = currentUser.value.role === 'admin'; // 只有管理员可以看到兼职老师数据
+                    let canSeePartTime = true; // 所有人都可以看到兼职老师数据
                     
                     if (currentUser.value.role === 'teacher') {
                         // 获取当前用户可查看的老师ID列表
@@ -511,20 +532,53 @@ const initApp = () => {
                     }
 
                     // Remove other teachers if they exist in tableData (cleanup)
-                    // 注意：qq (琪琪老师) 是兼职老师，只有管理员可见
+                    // qq (琪琪老师) 现在所有人都可见
                     Object.keys(tableData).forEach(key => {
-                        // 非管理员不能看到琪琪老师
-                        if (key === 'qq' && !canSeePartTime) {
-                            delete tableData[key];
-                        }
                         // 其他老师的清理逻辑
-                        else if (key !== '小花老师' && key !== 'qq' && !filteredTeachers.includes(key) && !['xh_la', 'xh_ch'].includes(key)) {
+                        if (key !== '小花老师' && key !== 'qq' && !filteredTeachers.includes(key) && !['xh_la', 'xh_ch'].includes(key)) {
                              delete tableData[key];
                         }
                     });
 
                     // Initialize salary data based on work data
-                    filteredTeachers.forEach(id => {
+                    // 确保所有老师（包括琪琪老师）都被处理
+                    const allTeacherIds = [...new Set([...filteredTeachers, 'qq'])];
+                    
+                    allTeacherIds.forEach(id => {
+                        // 琪琪老师特殊处理
+                        if (id === 'qq') {
+                            const qiqiId = 'qq';
+                            const qiqiWork = workData[qiqiId] || {};
+                            const qiqiManual = manualData[qiqiId] || {};
+                            
+                            const qiqiHours = Number(qiqiWork.classHours || qiqiManual.classHours || 0);
+                            const qiqiRate = Number(qiqiWork.hourlyRate || qiqiManual.hourlyRate || 0);
+                            const qiqiCommission = qiqiRate * 0.5;
+
+                            tableData[qiqiId] = {
+                                id: qiqiId,
+                                name: '琪琪老师',
+                                isPartTime: true,
+                                shouldAttend: 0,
+                                actualAttend: 0,
+                                classHours: qiqiHours,
+                                hourlyRate: qiqiRate,
+                                classCommission: qiqiCommission,
+                                baseSalary: 0,
+                                inviteBonus: 0,
+                                conversionBonus: 0,
+                                salesCommission: 0,
+                                performanceBonus: 0,
+                                socialSecurity: 0,
+                                adjustments: qiqiWork.adjustments || qiqiManual.adjustments || 0,
+                                adjustmentList: qiqiWork.adjustmentList || qiqiManual.adjustmentList || [],
+                                get grossPay() { return this.classCommission; },
+                                get netPay() { return this.classCommission + Number(this.adjustments || 0); }
+                            };
+                            return;
+                        }
+                        
+                        // 其他老师正常处理
                         const work = workData[id] || { name: id, demoInvites: 0, demoEnrollments: 0, attendance: 0, totalSales: 0 };
                         const baseSalary = baseSalaryMap[id] || 0;
                         
@@ -556,27 +610,6 @@ const initApp = () => {
 
                         // 4. 绩效奖金 (暂不执行)
                         let performanceBonus = 0;
-                        /* 绩效逻辑暂时停用
-                        const teacherMap = { 'tz': '桃子老师', 'yz': '柚子老师', 'xh_la': '小花老师', 'xh_ch': '小花老师', 'xc': '小草老师', 'qq': '琪琪老师' };
-                        const teacherName = teacherMap[id];
-                        // 小草老师绩效奖金暂不执行，显示0
-                        if (teacherName && id !== 'xc') {
-                            const evalSaved = localStorage.getItem(`eval_${teacherName}_${currentMonth.value}`);
-                            if (evalSaved) {
-                                const evalData = JSON.parse(evalSaved);
-                                const score = evalData.scores ? Object.values(evalData.scores).reduce((a, b) => a + b, 0) : 0;
-                                let coefficient = 1.0;
-                                if (score >= 120) coefficient = 2.0;
-                                else if (score >= 100) coefficient = 1.7;
-                                else if (score >= 80) coefficient = 1.4;
-                                else if (score >= 60) coefficient = 1.0;
-                                else if (score >= 40) coefficient = 0.8;
-                                else coefficient = 0.6;
-                                
-                                performanceBonus = 500 * coefficient;
-                            }
-                        }
-                        */
                         
                         // 获取现有的调整金额和备注（从本地持久化数据加载）
                         const saved = manualData[id] || {};
@@ -624,36 +657,6 @@ const initApp = () => {
                             netPay
                         };
                     });
-
-                    // 琪琪老师数据只有管理员可见
-                    if (canSeePartTime) {
-                        const qiqiId = 'qq';
-                        const qiqiManual = manualData[qiqiId] || {};
-                        const qiqiHours = Number(qiqiManual.classHours || 0);
-                        const qiqiRate = Number(qiqiManual.hourlyRate || 0);
-                        const qiqiCommission = qiqiRate * 0.5; // 琪琪老师的课时工资是课时金额的50%
-
-                        tableData[qiqiId] = {
-                            id: qiqiId,
-                            name: '琪琪老师',
-                            isPartTime: true,
-                            shouldAttend: 0,
-                            actualAttend: 0,
-                            classHours: qiqiHours,
-                            hourlyRate: qiqiRate,
-                            classCommission: qiqiCommission,
-                            baseSalary: 0,
-                            inviteBonus: 0,
-                            conversionBonus: 0,
-                            salesCommission: 0,
-                            performanceBonus: 0,
-                            socialSecurity: 0,
-                            adjustments: qiqiManual.adjustments || 0,
-                            adjustmentList: qiqiManual.adjustmentList || [],
-                            get grossPay() { return this.classCommission; },
-                            get netPay() { return this.classCommission + Number(this.adjustments || 0); }
-                        };
-                    }
 
                     // 4. 小花老师汇总
                     const xh_la = tableData['xh_la'];
