@@ -92,95 +92,10 @@ const initApp = () => {
 
             const tableData = reactive({});
 
+            // Note: syncFromGlobalData function has been removed to keep work data independent from dashboard data
+            // Work data should be manually entered or synced from external sources (e.g., Feishu, Tencent Docs)
             const syncFromGlobalData = () => {
-                console.log('开始同步全局数据...');
-                const year = currentMonth.value.split('-')[0];
-                const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
-                const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
-                const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
-
-                console.log('数据源状态:', {
-                    consumption: consumptionData.length,
-                    experience: experienceData.length,
-                    enrollment: enrollmentData.length
-                });
-
-                // Map of IDs to their filters
-                const idConfig = {
-                    'xh_la': { name: '小花老师', campus: '临安校区' },
-                    'xh_ch': { name: '小花老师', campus: '昌化校区' },
-                    'tz': { name: '桃子老师', campus: null },
-                    'yz': { name: '柚子老师', campus: null },
-                    'xc': { name: '小草老师', campus: null },
-                    'qq': { name: '琪琪老师', campus: null, isPartTime: true }
-                };
-
-                Object.entries(idConfig).forEach(([id, config]) => {
-                    const row = tableData[id];
-                    if (!row) {
-                        console.warn(`未找到 ID 为 ${id} 的行数据`);
-                        return;
-                    }
-
-                    // 1. Consumption Sync
-                    const cRecords = consumptionData.filter(d => 
-                        normalizeTeacherName(d.姓名) === config.name && 
-                        d.月份 === currentMonth.value &&
-                        (!config.campus || d.校区 === config.campus)
-                    );
-
-                    if (cRecords.length > 0) {
-                        row.regularHours = cRecords.reduce((sum, r) => sum + (Number(r.消课课时) || 0), 0);
-                        row.oneOnOneAttendees = cRecords.reduce((sum, r) => sum + (Number(r.一对一人次) || 0), 0);
-                        row.oneOnOneAmount = cRecords.reduce((sum, r) => sum + (Number(r.一对一金额) || 0), 0);
-                        row.attendance = cRecords.reduce((sum, r) => sum + (Number(r.出勤人次) || 0), 0);
-                        row.absence = cRecords.reduce((sum, r) => sum + (Number(r.缺勤人次) || 0), 0);
-                        row.leave = cRecords.reduce((sum, r) => sum + (Number(r.请假人次) || 0), 0);
-                        row.makeup = cRecords.reduce((sum, r) => sum + (Number(r.补课人次) || Number(r.缺课已补) || 0), 0);
-                    }
-
-                    // 2. Experience Sync
-                    const inviteRecords = experienceData.filter(d => 
-                        normalizeTeacherName(d.邀约老师) === config.name && 
-                        d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
-                        (!config.campus || d.所在校区 === config.campus)
-                    );
-                    if (inviteRecords.length > 0) {
-                        row.demoInvites = inviteRecords.length;
-                    }
-
-                    const teachingRecords = experienceData.filter(d => 
-                        normalizeTeacherName(d.体验课老师) === config.name && 
-                        d.体验课时间 && d.体验课时间.startsWith(currentMonth.value) &&
-                        (!config.campus || d.所在校区 === config.campus)
-                    );
-                    if (teachingRecords.length > 0) {
-                        row.demoAttendees = teachingRecords.filter(d => d.状态 === '已体验' || d.状态 === '已报课').length;
-                        row.demoEnrollments = teachingRecords.filter(d => d.状态 === '已报课').length;
-                    }
-
-                    // 3. Enrollment Sync
-                    const enRecords = enrollmentData.filter(d => {
-                        const matchTeacher = normalizeTeacherName(d.业绩归属人) === config.name;
-                        const matchMonth = d.报课时间 && d.报课时间.startsWith(currentMonth.value);
-                        const matchCampus = !config.campus || d.所在校区 === config.campus;
-                        return matchTeacher && matchMonth && matchCampus;
-                    });
-
-                    if (enRecords.length > 0) {
-                        row.newStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报'))
-                                                   .reduce((sum, r) => sum + (Number(r.报课人数) || 1), 0); // 默认1人，如果有报课人数则累加
-                        row.newSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('新报'))
-                                                .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
-                        row.renewalStudents = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费'))
-                                                      .reduce((sum, r) => sum + (Number(r.报课人数) || 1), 0);
-                        row.renewalSales = enRecords.filter(d => d.报课属性 && d.报课属性.includes('续费'))
-                                                  .reduce((sum, r) => sum + (Number(r.归属业绩金额) || 0), 0);
-                    }
-                });
-
-                updateSummaryRow('小花老师');
-                saveToLocal();
+                console.log('从仪表盘同步功能已禁用，工作数据请手动录入或从外部文档同步');
             };
 
             // Initialize tableData from Server or localStorage or initialData
@@ -203,13 +118,6 @@ const initApp = () => {
                 });
 
                 let hasLoadedData = false;
-
-                // If forceSync is requested, we go straight to syncFromGlobalData after initialization
-                if (forceSync) {
-                    console.log('强制同步模式：将从系统明细文件抓取最新数据');
-                    syncFromGlobalData();
-                    return;
-                }
 
                 try {
                     // 1. Try to load from server (Independent Work Database) - Highest Priority
@@ -267,12 +175,12 @@ const initApp = () => {
                     }
                 }
 
-                // 4. Final Fallback: Auto-sync from global data ONLY IF no other data was found
+                // 4. Final Fallback: Create empty data if no other data was found
+                // Note: Auto-sync from global data has been disabled to keep work data independent
                 if (!hasLoadedData) {
-                    console.log('未找到现有数据，正在从系统明细自动同步...');
-                    syncFromGlobalData();
+                    console.log('未找到现有数据，显示空白表格等待手动录入...');
                 } else {
-                    console.log('数据加载完成，未执行自动同步（保留现有数据）。');
+                    console.log('数据加载完成。');
                 }
             };
 

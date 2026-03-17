@@ -208,33 +208,6 @@ def record_log():
     log_action(session['username'], data.get('action'), data.get('details', ''))
     return jsonify({"status": "success"})
 
-@app.route('/sync', methods=['POST'])
-def sync_data():
-    # 移除登录权限校验，允许直接同步
-    try:
-        # 执行同步脚本
-        # 使用绝对路径确保能找到脚本
-        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_online_docs.py')
-        result = subprocess.run(['python3', script_path], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            return jsonify({
-                "status": "success",
-                "message": "数据同步成功！",
-                "output": result.stdout
-            })
-        else:
-            return jsonify({
-                "status": "error",
-                "message": "同步脚本执行失败",
-                "error": result.stderr
-            }), 500
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
 @app.route('/work-data', methods=['GET'])
 def get_work_data():
     month = request.args.get('month')

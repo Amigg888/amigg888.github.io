@@ -50,16 +50,15 @@
         /* Date Picker Popover */
         .datepicker-popover {
             position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            margin-top: 0.5rem;
+            top: calc(100% + 8px);
+            left: 0;
+            transform: none;
             background: white;
             border: 1px solid #e2e8f0;
             border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             width: 280px;
-            z-index: 100;
+            z-index: 9999;
             padding: 1.25rem;
             animation: popover-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }

@@ -28,10 +28,7 @@
     <script src="data-experience-2026.js?v=2026-02-13 00:58"></script>
     <script src="data-consumption-2026.js?v=2026-02-13 00:58"></script>
     <script src="student-data.js?v=2026-02-13 00:58"></script>
-    <script>
-        // 添加一个全局变量记录数据更新时间
-        window.ONLINE_SYNC_TIME = "2026-02-13 00:58"; // 这里可以通过脚本动态修改
-    </script>
+
     
     <style>
         /* 深色科技风色彩系统 - 升级版 */
@@ -698,19 +695,7 @@
                 <div class="text-right flex flex-col justify-center">
                     <div class="text-2xl font-mono text-blue-400 leading-none mb-1">{{ currentTime }}</div>
                     <div class="flex items-center justify-end gap-1 text-slate-400">
-                        <button 
-                            @click="syncOnlineData" 
-                            :disabled="isSyncing"
-                            class="p-1.5 rounded-full transition-all hover:bg-blue-500/20 active:scale-90 flex items-center justify-center bg-white/5 border border-white/10"
-                            :title="isSyncing ? '正在同步...' : '同步腾讯文档'"
-                        >
-                            <i 
-                                data-lucide="refresh-cw"
-                                class="w-4 h-4" 
-                                :class="isSyncing ? 'animate-spin text-blue-400' : 'text-blue-400 group-hover:text-white'"
-                            ></i>
-                        </button>
-                        <span class="text-[10px] font-mono">最近同步: {{ lastUpdateTime }}</span>
+                        <span class="text-[10px] font-mono">数据更新时间: {{ lastUpdateTime }}</span>
                     </div>
                 </div>
             </div>

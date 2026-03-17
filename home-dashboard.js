@@ -1011,42 +1011,7 @@ createApp({
             }]
         });
 
-        const syncOnlineData = async () => {
-            if (isSyncing.value) return;
-            isSyncing.value = true;
-            
-            const originalTitle = document.title;
-            document.title = "正在同步数据...";
-            
-            try {
-                const apiPath = 'http://127.0.0.1:3001/sync';
-                console.log('Attempting sync to:', apiPath);
 
-                const response = await fetch(apiPath, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    mode: 'cors'
-                });
-                
-                const data = await response.json();
-                if (data.status === 'success') {
-                    lastUpdateTime.value = dayjs().format('HH:mm:ss');
-                    alert('同步成功！页面将刷新以加载最新数据。');
-                    location.reload(); 
-                } else {
-                    alert('同步失败: ' + (data.message || '未知错误'));
-                }
-            } catch (error) {
-                console.error('Sync error details:', error);
-                alert('连接同步服务器失败！\n\n请检查：\n1. server.py 是否已启动（运行 python3 server.py）\n2. 3001 端口是否被占用\n3. 浏览器是否拦截了请求');
-            } finally {
-                isSyncing.value = false;
-                document.title = originalTitle;
-            }
-        };
 
         const teacherAttendanceRankings = computed(() => {
             const map = {};
@@ -1104,7 +1069,6 @@ createApp({
             teacherConsumptionRankings,
             teacherAttendanceRankings,
             realCampusStats,
-            syncOnlineData,
             initCharts,
             // 学生相关
             processedStudents,

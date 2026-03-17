@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞书数据导入 - 声度星主持</title>
+    <script src="lib/tailwind.js"></script>
+    <script src="lib/vue.global.js"></script>
+    <script src="lib/dayjs.min.js"></script>
+    <script src="auth-guard.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        [v-cloak] { display: none !important; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="app" v-cloak>
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-4">
+                        <a href="home-dashboard.html" class="text-slate-400 hover:text-slate-600 transition-colors">
+                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                        </a>
+                        <h1 class="text-xl font-bold text-slate-800">飞书数据导入</h1>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-slate-500">{{ currentUser }}</span>
+                        <button @click="logout" class="text-sm text-red-500 hover:text-red-600">
+                            退出
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 配置卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-blue-500"></i>
+                    飞书配置
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            应用令牌 (App Token)
+                        </label>
+                        <input 
+                            v-model="config.appToken" 
+                            type="text" 
+                            placeholder="请输入多维表格的 App Token"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                        <p class="text-xs text-slate-500 mt-1">在飞书多维表格的"更多"→"复制链接"中获取</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            月份
+                        </label>
+                        <input 
+                            v-model="config.month" 
+                            type="month" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            业绩数据表 ID (可选)
+                        </label>
+                        <input 
+                            v-model="config.performanceTableId" 
+                            type="text" 
+                            placeholder="tblXXXXXX"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            体验课数据表 ID (可选)
+                        </label>
+                        <input 
+                            v-model="config.experienceTableId" 
+                            type="text" 
+                            placeholder="tblYYYYYY"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                    </div>
+                </div>
+
+                <!-- 保存配置 -->
+                <div class="mt-4 flex items-center gap-3">
+                    <button 
+                        @click="saveConfig"
+                        class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm"
+                    >
+                        保存配置
+                    </button>
+                    <span v-if="configSaved" class="text-sm text-green-600 flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        已保存
+                    </span>
+                </div>
+            </div>
+
+            <!-- 同步操作 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-5 h-5 text-green-500"></i>
+                    数据同步
+                </h2>
+                
+                <div class="flex flex-wrap gap-3">
+                    <button 
+                        @click="syncData"
+                        :disabled="isSyncing || !config.appToken"
+                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                        <i v-if="isSyncing" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                        <i v-else data-lucide="download" class="w-4 h-4"></i>
+                        {{ isSyncing ? '同步中...' : '开始同步' }}
+                    </button>
+                    
+                    <button 
+                        @click="loadLocalData"
+                        class="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2"
+                    >
+                        <i data-lucide="folder-open" class="w-4 h-4"></i>
+                        加载本地数据
+                    </button>
+                </div>
+
+                <!-- 同步结果 -->
+                <div v-if="syncResult" class="mt-4 p-4 rounded-lg" :class="syncResult.status === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                    <div class="flex items-start gap-3">
+                        <i v-if="syncResult.status === 'success'" data-lucide="check-circle" class="w-5 h-5 text-green-500 mt-0.5"></i>
+                        <i v-else data-lucide="alert-circle" class="w-5 h-5 text-red-500 mt-0.5"></i>
+                        <div>
+                            <p class="font-medium" :class="syncResult.status === 'success' ? 'text-green-800' : 'text-red-800'">
+                                {{ syncResult.message }}
+                            </p>
+                            <div v-if="syncResult.data" class="mt-2 text-sm text-slate-600">
+                                <p v-if="syncResult.data.performance">
+                                    业绩数据: {{ syncResult.data.performance.message }}
+                                </p>
+                                <p v-if="syncResult.data.experience">
+                                    体验课数据: {{ syncResult.data.experience.message }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据预览 -->
+            <div v-if="previewData.length > 0" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="eye" class="w-5 h-5 text-purple-500"></i>
+                    数据预览
+                </h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-medium text-slate-700">老师姓名</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-700">正课课时</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-700">总销售额</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-700">体验邀约</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-700">体验转化</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-700">学员出勤率</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(item, name) in previewData" :key="name" class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-medium text-slate-800">{{ name }}</td>
+                                <td class="px-4 py-3 text-right">{{ item.regular_hours || 0 }}</td>
+                                <td class="px-4 py-3 text-right">{{ item.total_sales || 0 }}</td>
+                                <td class="px-4 py-3 text-right">{{ item.demo_invites || 0 }}</td>
+                                <td class="px-4 py-3 text-right">{{ item.demo_enrollments || 0 }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    {{ item.should_attend ? ((item.actual_attend / item.should_attend) * 100).toFixed(1) + '%' : '-' }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="bg-blue-50 rounded-xl border border-blue-200 p-6 mt-6">
+                <h3 class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i>
+                    使用说明
+                </h3>
+                <ol class="text-sm text-blue-700 space-y-2 list-decimal list-inside">
+                    <li>在飞书多维表格中，点击右上角"更多"→"复制链接"获取 App Token</li>
+                    <li>确保表格包含以下字段：老师姓名、月份、正课课时、总销售额、体验课邀约、体验课转化、应出勤、实际出勤</li>
+                    <li>配置完成后点击"开始同步"，数据将自动导入到本地</li>
+                    <li>同步完成后可在"数据录入"页面查看和编辑</li>
+                </ol>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const currentUser = ref(localStorage.getItem('currentUser') || '管理员');
+                const config = ref({
+                    appToken: localStorage.getItem('feishu_app_token') || '',
+                    performanceTableId: localStorage.getItem('feishu_performance_table') || '',
+                    experienceTableId: localStorage.getItem('feishu_experience_table') || '',
+                    month: dayjs().format('YYYY-MM')
+                });
+                const configSaved = ref(false);
+                const isSyncing = ref(false);
+                const syncResult = ref(null);
+                const previewData = ref([]);
+
+                const saveConfig = () => {
+                    localStorage.setItem('feishu_app_token', config.value.appToken);
+                    localStorage.setItem('feishu_performance_table', config.value.performanceTableId);
+                    localStorage.setItem('feishu_experience_table', config.value.experienceTableId);
+                    configSaved.value = true;
+                    setTimeout(() => configSaved.value = false, 2000);
+                };
+
+                const syncData = async () => {
+                    if (!config.value.appToken) {
+                        alert('请输入应用令牌');
+                        return;
+                    }
+
+                    isSyncing.value = true;
+                    syncResult.value = null;
+
+                    try {
+                        const response = await fetch('/sync-feishu', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                app_token: config.value.appToken,
+                                performance_table_id: config.value.performanceTableId || null,
+                                experience_table_id: config.value.experienceTableId || null,
+                                month: config.value.month
+                            })
+                        });
+
+                        const result = await response.json();
+                        syncResult.value = result;
+
+                        if (result.status === 'success') {
+                            // 加载预览数据
+                            await loadLocalData();
+                        }
+                    } catch (error) {
+                        syncResult.value = {
+                            status: 'error',
+                            message: '同步失败: ' + error.message
+                        };
+                    } finally {
+                        isSyncing.value = false;
+                    }
+                };
+
+                const loadLocalData = async () => {
+                    try {
+                        const response = await fetch(`/work-data?month=${config.value.month}`);
+                        const data = await response.json();
+                        previewData.value = data;
+                    } catch (error) {
+                        console.error('加载本地数据失败:', error);
+                    }
+                };
+
+                const logout = () => {
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('currentUser');
+                    window.location.href = 'login.html';
+                };
+
+                onMounted(() => {
+                    lucide.createIcons();
+                    loadLocalData();
+                });
+
+                return {
+                    currentUser,
+                    config,
+                    configSaved,
+                    isSyncing,
+                    syncResult,
+                    previewData,
+                    saveConfig,
+                    syncData,
+                    loadLocalData,
+                    logout
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
