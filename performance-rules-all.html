@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绩效考核规则 - 教学老师 & 教务老师</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .teacher-type {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+        
+        .teacher-type-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #f0f0f0;
+        }
+        
+        .teacher-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-right: 20px;
+        }
+        
+        .teacher-title h2 {
+            font-size: 28px;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+        
+        .teacher-title p {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .dimension-card {
+            background: #fafbfc;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #e8e8e8;
+        }
+        
+        .dimension-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .dimension-number {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            margin-right: 14px;
+        }
+        
+        .dimension-title {
+            flex: 1;
+        }
+        
+        .dimension-title h3 {
+            font-size: 18px;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        
+        .dimension-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 4px;
+        }
+        
+        .meta-tag {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 16px;
+            font-weight: 500;
+        }
+        
+        .meta-tag.weight {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .meta-tag.score {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .dimension-content {
+            color: #333;
+            line-height: 1.8;
+            font-size: 13px;
+        }
+        
+        .dimension-content h4 {
+            font-size: 14px;
+            color: #667eea;
+            margin: 14px 0 8px 0;
+            font-weight: 600;
+        }
+        
+        .dimension-content h4:first-child {
+            margin-top: 0;
+        }
+        
+        .dimension-content ul {
+            margin-left: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .dimension-content li {
+            margin-bottom: 4px;
+        }
+        
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .score-table th,
+        .score-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .score-table th {
+            background: #f0f0f0;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .score-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .score-badge.full {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .score-badge.high {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .score-badge.medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .score-badge.low {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-left: 3px solid #667eea;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+        
+        .example-box {
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+        
+        .example-box strong {
+            color: #f57c00;
+        }
+        
+        .coefficient-section {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+        
+        .coefficient-section h2 {
+            font-size: 24px;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .coefficient-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .coefficient-table th,
+        .coefficient-table td {
+            padding: 14px 16px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .coefficient-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .coefficient-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .coefficient-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>绩效考核规则</h1>
+            <p>教学老师 & 教务老师 2026年度考核标准</p>
+        </div>
+        
+        <!-- 绩效系数标准 -->
+        <div class="coefficient-section">
+            <h2>绩效等级与系数对照表</h2>
+            <table class="coefficient-table">
+                <tr>
+                    <th>等级</th>
+                    <th>分数区间</th>
+                    <th>绩效系数</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td><strong>标杆</strong></td>
+                    <td>≥120分</td>
+                    <td><span class="coefficient-value">2.0</span></td>
+                    <td>表现卓越，超额完成目标</td>
+                </tr>
+                <tr>
+                    <td><strong>卓越</strong></td>
+                    <td>100-119分</td>
+                    <td><span class="coefficient-value">1.6</span></td>
+                    <td>表现优秀，达到预期目标</td>
+                </tr>
+                <tr>
+                    <td><strong>优秀</strong></td>
+                    <td>80-99分</td>
+                    <td><span class="coefficient-value">1.4</span></td>
+                    <td>表现良好，基本完成目标</td>
+                </tr>
+                <tr>
+                    <td><strong>良好</strong></td>
+                    <td>60-79分</td>
+                    <td><span class="coefficient-value">1.0</span></td>
+                    <td>表现合格，需要继续努力</td>
+                </tr>
+                <tr>
+                    <td><strong>待改进</strong></td>
+                    <td>40-59分</td>
+                    <td><span class="coefficient-value">0.8</span></td>
+                    <td>表现欠佳，需要改进提升</td>
+                </tr>
+                <tr>
+                    <td><strong>需帮扶</strong></td>
+                    <td><40分或旷工>1天</td>
+                    <td><span class="coefficient-value">0.6</span></td>
+                    <td>表现不足，需要重点帮扶</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- 教学老师绩效规则 -->
+        <div class="teacher-type">
+            <div class="teacher-type-header">
+                <div class="teacher-icon">教</div>
+                <div class="teacher-title">
+                    <h2>教学老师绩效规则</h2>
+                    <p>小花老师、桃子老师、柚子老师、琪琪老师</p>
+                </div>
+            </div>
+            
+            <!-- 维度1：学员续费率 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">1</div>
+                    <div class="dimension-title">
+                        <h3>学员续费率</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 30%</span>
+                            <span class="meta-tag score">满分30分，超额最高35分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <h4>一、应续费人数 0 人（无续费任务）</h4>
+                    <p>得分：<strong>10 分</strong>（保底）</p>
+                    
+                    <h4>二、应续费人数 1 人</h4>
+                    <ul>
+                        <li>未续费：8 分</li>
+                        <li>已续费：18 分</li>
+                    </ul>
+                    
+                    <h4>三、应续费人数 2 人</h4>
+                    <ul>
+                        <li>续费 0 人：6 分</li>
+                        <li>续费 1 人：15 分</li>
+                        <li>续费 2 人：24 分</li>
+                    </ul>
+                    
+                    <h4>四、应续费人数 3 人及以上（正常考核）</h4>
+                    <table class="score-table">
+                        <tr>
+                            <th>续费率</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>低于 50%</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>50% - 69%</td>
+                            <td><span class="score-badge low">15 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>70% - 84%</td>
+                            <td><span class="score-badge medium">22 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>85% - 100%</td>
+                            <td><span class="score-badge high">30 分</span></td>
+                            <td>满分</td>
+                        </tr>
+                        <tr>
+                            <td>超过 100%</td>
+                            <td><span class="score-badge full">30分 + 额外加分</span></td>
+                            <td>每超10%加1分，最高35分</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="highlight-box">
+                        <strong>额外加分规则：</strong>续费率超过 100% 时，每超额 10% 加 1 分，最高加 5 分。提前续费计入实际续费人数，鼓励家长提前续费。
+                    </div>
+                    
+                    <div class="example-box">
+                        <strong>举例：</strong>应续费 5 人<br>
+                        • 实际续费 5 人，续费率 100%，得分 <strong>30 分</strong><br>
+                        • 实际续费 6 人（含 1 人提前续费），续费率 120%，得分 <strong>32 分</strong><br>
+                        • 实际续费 8 人（含 3 人提前续费），续费率 160%，得分 <strong>35 分</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度2：学员出勤率 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">2</div>
+                    <div class="dimension-title">
+                        <h3>学员出勤率</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 25%</span>
+                            <span class="meta-tag score">满分 25分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>出勤率</th>
+                            <th>得分</th>
+                            <th>计算方式</th>
+                        </tr>
+                        <tr>
+                            <td>≥ 95%</td>
+                            <td><span class="score-badge full">25 分</span></td>
+                            <td>满分</td>
+                        </tr>
+                        <tr>
+                            <td>75% - 94%</td>
+                            <td><span class="score-badge high">线性计分</span></td>
+                            <td>(实际出勤率 - 75%) × 100 × 1.25</td>
+                        </tr>
+                        <tr>
+                            <td>< 75%</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>-</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>举例：</strong>出勤率 85% = (85% - 75%) × 100 × 1.25 = <strong>12.5 分</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度3：体验课转化率 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">3</div>
+                    <div class="dimension-title">
+                        <h3>体验课转化率</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 20%</span>
+                            <span class="meta-tag score">满分 25分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <h4>体验人数阶梯</h4>
+                    <table class="score-table">
+                        <tr>
+                            <th>体验人数</th>
+                            <th>转化率</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>0 人</td>
+                            <td>-</td>
+                            <td><span class="score-badge medium">10 分</span>（保底）</td>
+                        </tr>
+                        <tr>
+                            <td>1 人</td>
+                            <td>0%</td>
+                            <td><span class="score-badge low">5 分</span>（保底）</td>
+                        </tr>
+                        <tr>
+                            <td>1 人</td>
+                            <td>100%</td>
+                            <td>按转化率阶梯</td>
+                        </tr>
+                        <tr>
+                            <td>2 人</td>
+                            <td>0%</td>
+                            <td><span class="score-badge low">3 分</span>（保底）</td>
+                        </tr>
+                        <tr>
+                            <td>2 人</td>
+                            <td>有转化</td>
+                            <td>按转化率阶梯</td>
+                        </tr>
+                        <tr>
+                            <td>≥ 3 人</td>
+                            <td>> 60%</td>
+                            <td><span class="score-badge full">25 分</span>（20分 + 5分额外）</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>转化率阶梯（有转化时适用）</h4>
+                    <table class="score-table">
+                        <tr>
+                            <th>转化率</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>≥ 60%</td>
+                            <td><span class="score-badge full">20 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>40% - 59%</td>
+                            <td><span class="score-badge high">15 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>20% - 39%</td>
+                            <td><span class="score-badge medium">10 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>< 20%</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 维度4：学员定期沟通 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">4</div>
+                    <div class="dimension-title">
+                        <h3>学员定期沟通</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 10%</span>
+                            <span class="meta-tag score">满分 10分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>沟通次数</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>≤ 9 次</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>10 - 14 次</td>
+                            <td><span class="score-badge medium">5 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>15 - 19 次</td>
+                            <td><span class="score-badge high">8 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>≥ 20 次</td>
+                            <td><span class="score-badge full">10 分</span>（满分）</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>核心目标：</strong>每月沟通次数 ≥ 20 次
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度5：考勤数据 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">5</div>
+                    <div class="dimension-title">
+                        <h3>考勤数据</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 10%</span>
+                            <span class="meta-tag score">满分 10分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>考勤情况</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>全勤</td>
+                            <td><span class="score-badge full">10 分</span></td>
+                            <td>0迟到、0早退、0旷工</td>
+                        </tr>
+                        <tr>
+                            <td>普通迟到 ≤3次</td>
+                            <td><span class="score-badge high">8 分</span></td>
+                            <td>≤30分钟，无严重迟到/早退/旷工</td>
+                        </tr>
+                        <tr>
+                            <td>普通迟到 4-5次 或 早退 1-2次</td>
+                            <td><span class="score-badge medium">5 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>严重违规</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>严重迟到、迟到+早退>5次、旷工1天</td>
+                        </tr>
+                        <tr>
+                            <td>旷工 >1天</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>直接判定为"需帮扶"等级</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>说明：</strong>每月允许 3 次普通迟到（≤30分钟），不影响满分。严重迟到（>30分钟）每次按 2 次计算。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度6：朋友圈宣传 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">6</div>
+                    <div class="dimension-title">
+                        <h3>朋友圈宣传</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 5%</span>
+                            <span class="meta-tag score">满分 5分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <p><strong>基准：</strong>24条/月</p>
+                    <p><strong>计分方式：</strong>(实际发布量 / 24) × 5，线性计分</p>
+                    <div class="highlight-box">
+                        <strong>举例：</strong>发布 12 条 = (12/24) × 5 = <strong>2.5 分</strong><br>
+                        发布 24 条及以上 = <strong>5 分</strong>（满分）
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度7：加分项 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">7</div>
+                    <div class="dimension-title">
+                        <h3>加分项（额外加分）</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 0%</span>
+                            <span class="meta-tag score">累计上限 15分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>加分项目</th>
+                            <th>计分标准</th>
+                        </tr>
+                        <tr>
+                            <td>转介绍</td>
+                            <td>每成功推荐 1 名学员报名，得 <strong>1 分</strong></td>
+                        </tr>
+                        <tr>
+                            <td>参赛获奖</td>
+                            <td>校区级 +1分 / 临安区级 +2分 / 杭州市级 +3分 / 浙江省级 +4分 / 国家级 +5分</td>
+                        </tr>
+                        <tr>
+                            <td>视频拍摄</td>
+                            <td>每完成 1 条符合机构要求的宣传视频，得 <strong>1 分</strong></td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>说明：</strong>各加分项无单独上限，加分项总分累计达 15 分后，超额部分不再计入绩效考核总分。
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 教务老师绩效规则 -->
+        <div class="teacher-type">
+            <div class="teacher-type-header">
+                <div class="teacher-icon">务</div>
+                <div class="teacher-title">
+                    <h2>教务老师绩效规则</h2>
+                    <p>小草老师（运营岗位）</p>
+                </div>
+            </div>
+            
+            <!-- 维度1：体验课邀约 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">1</div>
+                    <div class="dimension-title">
+                        <h3>体验课邀约</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 25%</span>
+                            <span class="meta-tag score">满分30分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>邀约人数</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>0 人</td>
+                            <td><span class="score-badge low">5 分</span></td>
+                            <td>保底</td>
+                        </tr>
+                        <tr>
+                            <td>1-4 人</td>
+                            <td><span class="score-badge low">5 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>5-9 人</td>
+                            <td><span class="score-badge medium">10 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>10-14 人</td>
+                            <td><span class="score-badge high">15 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>15-19 人</td>
+                            <td><span class="score-badge high">20 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>20-24 人</td>
+                            <td><span class="score-badge full">25 分</span></td>
+                            <td>基础满分</td>
+                        </tr>
+                        <tr>
+                            <td>≥ 25 人</td>
+                            <td><span class="score-badge full">30 分</span></td>
+                            <td>含额外加分5分</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>基础量要求：</strong>每月至少邀约 10 人。超额完成（≥25人）可获得额外 5 分加分。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度2：整体转化率 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">2</div>
+                    <div class="dimension-title">
+                        <h3>整体转化率</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 25%</span>
+                            <span class="meta-tag score">满分30分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <h4>体验人数 < 5 人</h4>
+                    <table class="score-table">
+                        <tr>
+                            <th>转化率</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>> 60%</td>
+                            <td><span class="score-badge full">25 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>40% - 59%</td>
+                            <td><span class="score-badge high">15 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>20% - 39%</td>
+                            <td><span class="score-badge medium">8 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>< 20%</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                        </tr>
+                    </table>
+                    
+                    <h4>体验人数 ≥ 5 人</h4>
+                    <table class="score-table">
+                        <tr>
+                            <th>转化率</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>> 70%</td>
+                            <td><span class="score-badge full">30 分</span></td>
+                            <td>含额外加分5分</td>
+                        </tr>
+                        <tr>
+                            <td>60% - 70%</td>
+                            <td><span class="score-badge full">25 分</span></td>
+                            <td>基础满分</td>
+                        </tr>
+                        <tr>
+                            <td>40% - 59%</td>
+                            <td><span class="score-badge high">15 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>20% - 39%</td>
+                            <td><span class="score-badge medium">8 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>< 20%</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>-</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>说明：</strong>考核所有体验课的整体转化情况（非个人上课转化）。超额完成（转化率>70%）可获得额外 5 分加分。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度3：短视频制作 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">3</div>
+                    <div class="dimension-title">
+                        <h3>短视频制作</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 20%</span>
+                            <span class="meta-tag score">满分 20分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>视频数量</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>0 条</td>
+                            <td><span class="score-badge low">5 分</span></td>
+                            <td>保底</td>
+                        </tr>
+                        <tr>
+                            <td>1-3 条</td>
+                            <td><span class="score-badge medium">8 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>4-6 条</td>
+                            <td><span class="score-badge high">12 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>7-9 条</td>
+                            <td><span class="score-badge high">16 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>≥ 10 条</td>
+                            <td><span class="score-badge full">20 分</span></td>
+                            <td>满分</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>基准：</strong>每月 10 条符合机构要求的宣传视频。视频需发布至抖音/视频号等平台。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度4：朋友圈宣传 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">4</div>
+                    <div class="dimension-title">
+                        <h3>朋友圈宣传</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 10%</span>
+                            <span class="meta-tag score">满分 10分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>发布数量</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>0 条</td>
+                            <td><span class="score-badge low">2 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>1-5 条</td>
+                            <td><span class="score-badge medium">4 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>6-11 条</td>
+                            <td><span class="score-badge medium">6 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>12-17 条</td>
+                            <td><span class="score-badge high">8 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>18-23 条</td>
+                            <td><span class="score-badge high">9 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>≥ 24 条</td>
+                            <td><span class="score-badge full">10 分</span></td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>基准：</strong>每月 24 条朋友圈宣传内容。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度5：直播考核 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">5</div>
+                    <div class="dimension-title">
+                        <h3>直播考核</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 10%</span>
+                            <span class="meta-tag score">满分 10分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>直播场次</th>
+                            <th>得分</th>
+                        </tr>
+                        <tr>
+                            <td>0 场</td>
+                            <td><span class="score-badge low">2 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>1-2 场</td>
+                            <td><span class="score-badge medium">4 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>3-4 场</td>
+                            <td><span class="score-badge medium">6 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>5-6 场</td>
+                            <td><span class="score-badge high">8 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>7 场</td>
+                            <td><span class="score-badge high">9 分</span></td>
+                        </tr>
+                        <tr>
+                            <td>≥ 8 场</td>
+                            <td><span class="score-badge full">10 分</span></td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>基准：</strong>每月 8 场直播。直播需为有效直播（时长≥30分钟，有实质内容）。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度6：考勤数据 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">6</div>
+                    <div class="dimension-title">
+                        <h3>考勤数据</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 10%</span>
+                            <span class="meta-tag score">满分 10分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>考勤情况</th>
+                            <th>得分</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>全勤</td>
+                            <td><span class="score-badge full">10 分</span></td>
+                            <td>0迟到、0早退、0旷工</td>
+                        </tr>
+                        <tr>
+                            <td>普通迟到 ≤3次</td>
+                            <td><span class="score-badge high">8 分</span></td>
+                            <td>≤30分钟，无严重迟到/早退/旷工</td>
+                        </tr>
+                        <tr>
+                            <td>普通迟到 4-5次 或 早退 1-2次</td>
+                            <td><span class="score-badge medium">5 分</span></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>严重违规</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>严重迟到、迟到+早退>5次、旷工1天</td>
+                        </tr>
+                        <tr>
+                            <td>旷工 >1天</td>
+                            <td><span class="score-badge low">0 分</span></td>
+                            <td>直接判定为"需帮扶"等级</td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>说明：</strong>每月允许 3 次普通迟到（≤30分钟），不影响满分。严重迟到（>30分钟）每次按 2 次计算。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 维度7：加分项 -->
+            <div class="dimension-card">
+                <div class="dimension-header">
+                    <div class="dimension-number">7</div>
+                    <div class="dimension-title">
+                        <h3>加分项（额外加分）</h3>
+                        <div class="dimension-meta">
+                            <span class="meta-tag weight">权重 0%</span>
+                            <span class="meta-tag score">累计上限 15分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dimension-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>加分项目</th>
+                            <th>计分标准</th>
+                        </tr>
+                        <tr>
+                            <td>转介绍</td>
+                            <td>每成功推荐 1 名学员报名，得 <strong>1 分</strong></td>
+                        </tr>
+                        <tr>
+                            <td>爆款短视频</td>
+                            <td>单条播放量 ≥1000，得 <strong>2 分/条</strong></td>
+                        </tr>
+                        <tr>
+                            <td>新渠道开拓</td>
+                            <td>每成功开拓 1 个有效渠道（带来≥3个体验学员），得 <strong>3 分</strong></td>
+                        </tr>
+                    </table>
+                    <div class="highlight-box">
+                        <strong>说明：</strong>各加分项无单独上限，加分项总分累计达 15 分后，超额部分不再计入绩效考核总分。
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>绩效考核系统 · 2026年度 · 教学老师 & 教务老师</p>
+        </div>
+    </div>
+</body>
+</html>

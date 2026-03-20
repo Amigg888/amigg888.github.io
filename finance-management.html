@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务管理 - 声度星主持</title>
+    <script src="lib/tailwind.js"></script>
+    <script src="lib/vue.global.js"></script>
+    <script src="lib/dayjs.min.js"></script>
+    <script src="auth-guard.js?v=2026-02-28"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .data-table th { white-space: nowrap; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 0; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        .data-table td { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px; white-space: nowrap; }
+        .data-table td:first-child, .data-table th:first-child { min-width: 130px; }
+        .summary-row { background-color: #f8fafc; }
+        .total-row { background-color: #1e293b; color: white; }
+        .total-row td { border-bottom: none; font-weight: 900; }
+        .money-cell { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 700; }
+
+        @media (max-width: 768px) {
+            .sidebar-open main { margin-left: 0; }
+            aside { transform: translateX(-100%); transition: transform 0.3s ease; width: 260px; }
+            aside.mobile-active { transform: translateX(0); }
+            main { margin-left: 0 !important; }
+            .header-content { padding-left: 1rem; padding-right: 1rem; }
+            .table-section { padding: 1rem !important; }
+            .data-table th, .data-table td { padding: 8px 12px; font-size: 12px; }
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .datepicker-popover {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            transform: none;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 280px;
+            z-index: 9999;
+            padding: 1.25rem;
+            animation: popover-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes popover-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .month-btn {
+            padding: 0.6rem 0.4rem;
+            text-align: center;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            color: #64748b;
+        }
+
+        .month-btn:hover {
+            background: #f1f5f9;
+            color: #2563eb;
+        }
+
+        .month-btn.active {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+        }
+
+        .year-tab-container {
+            display: flex;
+            background: #f1f5f9;
+            padding: 3px;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .year-tab {
+            flex: 1;
+            padding: 6px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+
+        .year-tab.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+    <div id="app" v-cloak class="min-h-screen">
+        <div class="flex min-h-screen">
+            <aside :class="['w-52 bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 h-screen z-50', isMobileMenuOpen ? 'mobile-active' : '']">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-1.5 rounded-lg shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h1 class="font-bold text-lg tracking-tight text-slate-800">财务管理</h1>
+                    </div>
+                    <button @click="isMobileMenuOpen = false" class="md:hidden p-2 text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <nav class="flex-grow p-4 space-y-1.5 overflow-y-auto">
+                    <a href="index.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all text-slate-600 hover:bg-slate-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        仪表盘
+                    </a>
+                    <a href="salary-calculation.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all text-slate-600 hover:bg-slate-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        工资计算
+                    </a>
+                    <div class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-600 shadow-sm border border-purple-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        财务总览
+                    </div>
+                </nav>
+
+                <div class="p-4 border-t border-slate-100">
+                    <div class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl p-3">
+                        <p class="text-[10px] font-bold opacity-80 mb-1">管理员模式</p>
+                        <p class="text-xs font-bold">{{ currentUser.name || '总管理员' }}</p>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="flex-grow flex flex-col min-w-0 ml-52 relative">
+                <div class="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+                    <button @click="isMobileMenuOpen = true" class="p-2 -ml-2 text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                    <h1 class="font-bold text-slate-800 flex-grow text-center">财务管理</h1>
+                    <div class="w-10"></div>
+                </div>
+
+                <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex flex-col md:flex-row md:items-center justify-between sticky top-0 md:top-0 z-30 header-content">
+                    <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2 md:mb-0">
+                        <div class="flex items-center justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
+                            <h2 class="text-lg font-black text-slate-800 tracking-tight">财务数据总览</h2>
+                        </div>
+
+                        <div class="relative">
+                            <button @click="showDatePicker = !showDatePicker"
+                                    class="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-all group">
+                                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <span class="text-xs font-bold text-slate-700">
+                                    {{ currentMonth.split('-')[0] }}年{{ currentMonth.split('-')[1] }}月
+                                </span>
+                                <svg :class="['w-3 h-3 text-slate-400 transition-transform duration-200', showDatePicker ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+
+                            <div v-if="showDatePicker" v-cloak class="datepicker-popover">
+                                <div class="year-tab-container">
+                                    <div v-for="y in ['2025', '2026']" :key="y"
+                                         @click="pickerTempYear = y"
+                                         :class="['year-tab', pickerTempYear === y ? 'active' : '']">
+                                        {{y}}年
+                                    </div>
+                                </div>
+
+                                <div class="month-grid">
+                                    <button v-for="m in 12" :key="m"
+                                            @click="selectMonth(pickerTempYear, m)"
+                                            :class="['month-btn', currentMonth === `${pickerTempYear}-${String(m).padStart(2, '0')}` ? 'active' : '']">
+                                        {{m}}月
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button @click="exportFinanceReport" class="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            导出报表
+                        </button>
+                    </div>
+                </header>
+
+                <div class="p-4 md:p-6 flex-grow overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-indigo-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium opacity-80">应发工资总额</span>
+                                <svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div class="text-2xl font-black">¥{{ formatMoney(summaryData.grossPayTotal) }}</div>
+                            <div class="text-xs opacity-70 mt-1">{{ employeeCount }}名员工</div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-slate-500">社保代扣总额</span>
+                                <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            </div>
+                            <div class="text-2xl font-black text-red-500">-¥{{ formatMoney(summaryData.socialSecurityTotal) }}</div>
+                            <div class="text-xs text-slate-400 mt-1">个人缴纳部分</div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-slate-500">公司社保成本</span>
+                                <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </div>
+                            <div class="text-2xl font-black text-orange-500">¥{{ formatMoney(summaryData.companySocialSecurityTotal) }}</div>
+                            <div class="text-xs text-slate-400 mt-1">企业缴纳部分</div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-slate-500">实发工资总额</span>
+                                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div class="text-2xl font-black text-emerald-600">¥{{ formatMoney(summaryData.netPayTotal) }}</div>
+                            <div class="text-xs text-slate-400 mt-1">扣除社保后</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-6 flex gap-2 overflow-x-auto pb-2">
+                        <button v-for="tab in tabs" :key="tab.key"
+                                @click="activeTab = tab.key"
+                                :class="['px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap',
+                                         activeTab === tab.key ? 'tab-active shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+                            <span class="flex items-center gap-1.5">
+                                <span v-html="tab.icon"></span>
+                                {{ tab.label }}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div v-if="activeTab === 'salary'" class="space-y-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    月度工资明细
+                                </h3>
+                                <a href="salary-calculation.html" class="text-xs text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1">
+                                    前往工资计算
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                </a>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table w-full text-left">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center">姓名</th>
+                                            <th class="text-center">应发工资</th>
+                                            <th class="text-center">社保代扣</th>
+                                            <th class="text-center">其他调整</th>
+                                            <th class="text-center">实发工资</th>
+                                            <th class="text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(row, id) in salaryData" :key="id" class="hover:bg-slate-50 transition-colors">
+                                            <td class="text-center font-bold text-slate-700">{{ row.name }}</td>
+                                            <td class="text-center money-cell text-slate-800">¥{{ formatMoney(row.grossPay) }}</td>
+                                            <td class="text-center money-cell text-red-500">-¥{{ formatMoney(row.socialSecurity) }}</td>
+                                            <td class="text-center money-cell" :class="row.adjustments >= 0 ? 'text-slate-700' : 'text-red-500'">
+                                                {{ row.adjustments >= 0 ? '+' : '' }}¥{{ formatMoney(row.adjustments) }}
+                                            </td>
+                                            <td class="text-center money-cell text-indigo-600 font-black text-sm">¥{{ formatMoney(row.netPay) }}</td>
+                                            <td class="text-center">
+                                                <button class="px-3 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
+                                                    查看详情
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr class="total-row">
+                                            <td class="text-center font-black">合计</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(summaryData.grossPayTotal) }}</td>
+                                            <td class="text-center money-cell">-¥{{ formatMoney(summaryData.socialSecurityTotal) }}</td>
+                                            <td class="text-center money-cell">+¥{{ formatMoney(summaryData.adjustmentsTotal) }}</td>
+                                            <td class="text-center money-cell text-indigo-400">¥{{ formatMoney(summaryData.netPayTotal) }}</td>
+                                            <td class="text-center">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="activeTab === 'socialSecurity'" class="space-y-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    社保工资成本明细
+                                </h3>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table w-full text-left">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center">姓名</th>
+                                            <th class="text-center">养老保险</th>
+                                            <th class="text-center">医疗保险</th>
+                                            <th class="text-center">失业保险</th>
+                                            <th class="text-center">工伤保险</th>
+                                            <th class="text-center">生育保险</th>
+                                            <th class="text-center">个人合计</th>
+                                            <th class="text-center">公司养老</th>
+                                            <th class="text-center">公司医疗</th>
+                                            <th class="text-center">公司工伤</th>
+                                            <th class="text-center">公司合计</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(row, id) in socialSecurityData" :key="id" class="hover:bg-slate-50 transition-colors">
+                                            <td class="text-center font-bold text-slate-700">{{ row.name }}</td>
+                                            <td class="text-center money-cell text-slate-600">¥{{ formatMoney(row.pension_insurance) }}</td>
+                                            <td class="text-center money-cell text-slate-600">¥{{ formatMoney(row.medical_insurance) }}</td>
+                                            <td class="text-center money-cell text-slate-600">¥{{ formatMoney(row.unemployment_insurance) }}</td>
+                                            <td class="text-center money-cell text-slate-600">¥{{ formatMoney(row.work_injury_insurance) }}</td>
+                                            <td class="text-center money-cell text-slate-600">¥{{ formatMoney(row.maternity_insurance) }}</td>
+                                            <td class="text-center money-cell text-red-500 font-bold">¥{{ formatMoney(row.personalTotal) }}</td>
+                                            <td class="text-center money-cell text-orange-600">¥{{ formatMoney(row.company_pension) }}</td>
+                                            <td class="text-center money-cell text-orange-600">¥{{ formatMoney(row.company_medical) }}</td>
+                                            <td class="text-center money-cell text-orange-600">¥{{ formatMoney(row.company_work_injury) }}</td>
+                                            <td class="text-center money-cell text-orange-600 font-black">¥{{ formatMoney(row.companyTotal) }}</td>
+                                        </tr>
+                                        <tr class="total-row">
+                                            <td class="text-center font-black">合计</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.pension_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.medical_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.unemployment_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.work_injury_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.maternity_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.personal_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.company_pension_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.company_medical_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.company_work_injury_total) }}</td>
+                                            <td class="text-center money-cell">¥{{ formatMoney(socialSecuritySummary.company_total) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-5">
+                                <h4 class="font-bold text-orange-800 mb-3 flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    社保缴费比例说明
+                                </h4>
+                                <div class="space-y-2 text-xs text-orange-700">
+                                    <div class="flex justify-between"><span>养老保险：</span><span class="font-bold">个人8% / 公司16%</span></div>
+                                    <div class="flex justify-between"><span>医疗保险：</span><span class="font-bold">个人2% / 公司8%</span></div>
+                                    <div class="flex justify-between"><span>失业保险：</span><span class="font-bold">个人0.5% / 公司0.5%</span></div>
+                                    <div class="flex justify-between"><span>工伤保险：</span><span class="font-bold">公司0.4%</span></div>
+                                    <div class="flex justify-between"><span>生育保险：</span><span class="font-bold">公司0.8%</span></div>
+                                </div>
+                            </div>
+                            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-5">
+                                <h4 class="font-bold text-emerald-800 mb-3 flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                    社保基数
+                                </h4>
+                                <div class="space-y-2 text-xs text-emerald-700">
+                                    <div class="flex justify-between"><span>小花老师：</span><span class="font-bold">¥5,000</span></div>
+                                    <div class="flex justify-between"><span>桃子老师：</span><span class="font-bold">¥5,000</span></div>
+                                    <div class="flex justify-between"><span>柚子老师：</span><span class="font-bold">¥5,000</span></div>
+                                    <div class="flex justify-between"><span>小草老师：</span><span class="font-bold">¥5,000</span></div>
+                                    <div class="flex justify-between"><span>琪琪老师：</span><span class="font-bold text-slate-400">（兼职不缴纳）</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="activeTab === 'advance'" class="space-y-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    垫付资金记录
+                                </h3>
+                                <button @click="showAdvanceModal = true" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    添加垫付
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table w-full text-left">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center">日期</th>
+                                            <th class="text-center">事由</th>
+                                            <th class="text-center">金额</th>
+                                            <th class="text-center">申请人</th>
+                                            <th class="text-center">状态</th>
+                                            <th class="text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-if="advanceRecords.length === 0">
+                                            <td colspan="6" class="text-center py-8 text-slate-400 italic">暂无垫付记录</td>
+                                        </tr>
+                                        <tr v-for="(record, index) in advanceRecords" :key="index" class="hover:bg-slate-50 transition-colors">
+                                            <td class="text-center text-slate-600">{{ record.date }}</td>
+                                            <td class="text-center font-medium text-slate-700">{{ record.reason }}</td>
+                                            <td class="text-center money-cell text-blue-600 font-bold">¥{{ formatMoney(record.amount) }}</td>
+                                            <td class="text-center text-slate-600">{{ record.applicant }}</td>
+                                            <td class="text-center">
+                                                <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold',
+                                                    record.status === 'pending' ? 'bg-amber-50 text-amber-600' :
+                                                    record.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500']">
+                                                    {{ record.status === 'pending' ? '待审批' : record.status === 'approved' ? '已批准' : '已拒绝' }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    <button v-if="record.status === 'pending'" @click="approveAdvance(index)" class="px-2 py-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors">批准</button>
+                                                    <button v-if="record.status === 'pending'" @click="rejectAdvance(index)" class="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors">拒绝</button>
+                                                    <button @click="viewAdvanceAttachment(index)" class="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors">附件</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5">
+                            <div class="flex items-center gap-2 mb-2">
+                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="text-sm font-bold text-blue-800">垫付说明</span>
+                            </div>
+                            <p class="text-xs text-blue-700 leading-relaxed">
+                                垫付资金是指员工因公业务需要，先行垫付后再报销的款项。请详细填写垫付事由，并上传相关凭证附件，以便财务审核。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div v-if="activeTab === 'reimbursement'" class="space-y-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+                                    报销管理
+                                </h3>
+                                <button @click="showReimbursementModal = true" class="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    新建报销
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table w-full text-left">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center">申请日期</th>
+                                            <th class="text-center">报销事由</th>
+                                            <th class="text-center">金额</th>
+                                            <th class="text-center">申请人</th>
+                                            <th class="text-center">当前状态</th>
+                                            <th class="text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-if="reimbursementRecords.length === 0">
+                                            <td colspan="6" class="text-center py-8 text-slate-400 italic">暂无报销记录</td>
+                                        </tr>
+                                        <tr v-for="(record, index) in reimbursementRecords" :key="index" class="hover:bg-slate-50 transition-colors">
+                                            <td class="text-center text-slate-600">{{ record.date }}</td>
+                                            <td class="text-center font-medium text-slate-700">{{ record.reason }}</td>
+                                            <td class="text-center money-cell text-teal-600 font-bold">¥{{ formatMoney(record.amount) }}</td>
+                                            <td class="text-center text-slate-600">{{ record.applicant }}</td>
+                                            <td class="text-center">
+                                                <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold',
+                                                    record.status === 'pending' ? 'bg-amber-50 text-amber-600' :
+                                                    record.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                                                    record.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                                    'bg-blue-50 text-blue-600']">
+                                                    {{ record.status === 'pending' ? '待审批' : record.status === 'approved' ? '已批准' : record.status === 'rejected' ? '已拒绝' : '已完成' }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    <button v-if="record.status === 'pending'" @click="approveReimbursement(index)" class="px-2 py-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors">批准</button>
+                                                    <button v-if="record.status === 'pending'" @click="rejectReimbursement(index)" class="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors">拒绝</button>
+                                                    <button @click="viewReimbursementAttachment(index)" class="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors">附件</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                                <div class="text-3xl font-black text-amber-500">{{ reimbursementStats.pending }}</div>
+                                <div class="text-xs text-slate-500 mt-1">待审批</div>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                                <div class="text-3xl font-black text-emerald-500">{{ reimbursementStats.approved }}</div>
+                                <div class="text-xs text-slate-500 mt-1">已批准</div>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                                <div class="text-3xl font-black text-slate-500">{{ reimbursementStats.completed }}</div>
+                                <div class="text-xs text-slate-500 mt-1">已完成</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <div v-if="showAdvanceModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                <header class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50">
+                    <div>
+                        <h3 class="font-black text-slate-800">添加垫付记录</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">记录员工垫付资金信息</p>
+                    </div>
+                    <button @click="showAdvanceModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </header>
+
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">垫付事由</label>
+                        <input type="text" v-model="newAdvance.reason" placeholder="请输入垫付事由"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">垫付金额</label>
+                        <input type="number" v-model.number="newAdvance.amount" placeholder="0.00" step="0.01"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">垫付日期</label>
+                        <input type="date" v-model="newAdvance.date"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">相关凭证</label>
+                        <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer"
+                             @click="document.getElementById('advanceFileInput').click()">
+                            <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-xs text-slate-500">点击上传凭证文件</p>
+                        </div>
+                        <input type="file" id="advanceFileInput" class="hidden" accept="image/*,.pdf" @change="handleAdvanceFileUpload">
+                    </div>
+                </div>
+
+                <footer class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+                    <button @click="showAdvanceModal = false" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">取消</button>
+                    <button @click="submitAdvance" class="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">提交</button>
+                </footer>
+            </div>
+        </div>
+
+        <div v-if="showReimbursementModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                <header class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-teal-50">
+                    <div>
+                        <h3 class="font-black text-slate-800">新建报销申请</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">提交报销申请至财务审核</p>
+                    </div>
+                    <button @click="showReimbursementModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </header>
+
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">报销事由</label>
+                        <input type="text" v-model="newReimbursement.reason" placeholder="请输入报销事由"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">报销金额</label>
+                        <input type="number" v-model.number="newReimbursement.amount" placeholder="0.00" step="0.01"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">申请日期</label>
+                        <input type="date" v-model="newReimbursement.date"
+                               class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">报销凭证</label>
+                        <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-teal-300 hover:bg-teal-50/30 transition-all cursor-pointer"
+                             @click="document.getElementById('reimbursementFileInput').click()">
+                            <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-xs text-slate-500">点击上传报销凭证</p>
+                        </div>
+                        <input type="file" id="reimbursementFileInput" class="hidden" accept="image/*,.pdf" @change="handleReimbursementFileUpload">
+                    </div>
+                </div>
+
+                <footer class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+                    <button @click="showReimbursementModal = false" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">取消</button>
+                    <button @click="submitReimbursement" class="px-6 py-2 bg-teal-600 text-white rounded-xl text-sm font-black shadow-lg shadow-teal-200 hover:bg-teal-700 transition-all">提交</button>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script src="data-consumption-2025.js"></script>
+    <script src="data-consumption-2026.js"></script>
+    <script src="data-experience-2025.js"></script>
+    <script src="data-experience-2026.js"></script>
+    <script src="data-2025.js"></script>
+    <script src="data-2026.js"></script>
+    <script src="preset-data.js"></script>
+    <script src="finance-management.js?v=2026-02-28"></script>
+</body>
+</html>

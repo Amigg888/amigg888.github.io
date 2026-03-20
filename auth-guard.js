@@ -17,6 +17,9 @@
     // 核心判定逻辑：以下页面是公开的（无需登录即可查看）
     const PUBLIC_PAGES = ['index.html', 'home-dashboard.html', 'login.html', 'consumption.html'];
     
+    // 需要管理员权限的页面（仅限 sendo 管理员账号访问）
+    const ADMIN_ONLY_PAGES = ['finance-management.html'];
+    
     // 如果是根目录，getPageName 会返回 index.html
     const currentPage = getPageName();
     
@@ -44,6 +47,14 @@
                 const user = JSON.parse(userJson);
                 if (!user || !user.username) {
                     throw new Error('用户信息字段缺失');
+                }
+                
+                // 检查管理员专属页面权限
+                const isAdminPage = ADMIN_ONLY_PAGES.some(p => currentPage.toLowerCase() === p.toLowerCase());
+                if (isAdminPage && user.username !== 'sendo') {
+                    console.warn('[AuthGuard] 非管理员用户尝试访问管理员页面:', user.username);
+                    window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href) + '&error=admin_only';
+                    return;
                 }
                 
                 window.currentUser = user;

@@ -368,136 +368,21 @@ const initApp = () => {
                     }
                 }
 
-                // 3. 如果本地也没有，回退到预设数据
-                if (!workData && window.presetWorkHistory && window.presetWorkHistory[currentMonth.value]) {
-                    const monthPresets = window.presetWorkHistory[currentMonth.value];
-                    if (monthPresets.length > 0) {
-                        const latestPreset = [...monthPresets].sort((a, b) => b.timestamp - a.timestamp)[0];
-                        workData = latestPreset.data;
-                        console.log(`使用预设数据进行 ${currentMonth.value} 的工资计算`);
-                    }
+                // 3. 不使用预设数据 - 工资只看工作数据，没有就为空
+                if (!workData) {
+                    workData = {};
+                    console.log(`${currentMonth.value} 工作数据为空，工资数据将为默认值`);
                 }
 
                 // 加载手动保存的调整数据
                 const manualSaved = localStorage.getItem(`salary_manual_${currentMonth.value}`);
                 const manualData = manualSaved ? JSON.parse(manualSaved) : {};
 
-                // 强制同步逻辑优化：只有在没有服务器数据，或者明确需要从全局 JS 同步时才执行
-                // 如果已经从服务器获取了数据，则不再从静态 JS 文件强制覆盖，除非服务器数据为空
-                const consumptionData = year === '2026' ? (window.consumptionData2026 || []) : (window.consumptionData2025 || []);
-                const experienceData = year === '2026' ? (window.experienceDetails2026 || []) : (window.experienceDetails2025 || []);
-                const enrollmentData = year === '2026' ? (window.enrollmentDetails2026 || []) : (window.enrollmentDetails2025 || []);
-                
-                const hasGlobalData = consumptionData.length > 0 || experienceData.length > 0 || enrollmentData.length > 0;
-                
-                if (!isFromServer && hasGlobalData) {
-                    console.log(`从全局数据同步 ${currentMonth.value} 的工作数据...`);
-                    const oldWorkData = workData || {};
+                // 4. 不使用全局业务数据同步 - 工资只看工作数据
+                // 根据用户要求：工资数据只看工作数据，如果工作数据为0，工资数据就为0
+                if (!workData) {
+                    console.log(`${currentMonth.value} 没有工作数据，工资数据将为0`);
                     workData = {};
-                    
-                    const idConfig = {
-                        'xh_la': { name: '小花老师', campus: '临安校区' },
-                        'xh_ch': { name: '小花老师', campus: '昌化校区' },
-                        'tz': { name: '桃子老师', campus: null },
-                        'yz': { name: '柚子老师', campus: null },
-                        'xc': { name: '小草老师', campus: null, isTeachingDisabled: true },
-                        'qq': { name: '琪琪老师', campus: null, isPartTime: true }
-                    };
-
-                    Object.entries(idConfig).forEach(([id, config]) => {
-                        const monthStr = currentMonth.value;
-                        
-                        // 1. 邀约/转化数据 (experienceData)
-                        // 邀约奖金归属于邀约老师
-                        const inviteExp = experienceData.filter(d => {
-                            const dMonth = d.体验课时间 ? d.体验课时间.substring(0, 7) : '';
-                            return dMonth === monthStr && 
-                                   d.邀约老师 === config.name && 
-                                   (!config.campus || d.所在校区 === config.campus);
-                        });
-                        const demoInvites = inviteExp.length;
-
-                        // 转化奖金逻辑修正：
-                        // 教务销售老师（如小草老师）只拿邀约奖金（20元/人）。
-                        // 只有实际上课的老师（体验课老师）才拿转化奖金（50元/人）。
-                        const teachingExp = experienceData.filter(d => {
-                            const dMonth = d.体验课时间 ? d.体验课时间.substring(0, 7) : '';
-                            return dMonth === monthStr && 
-                                   d.体验课老师 === config.name && 
-                                   (!config.campus || d.所在校区 === config.campus);
-                        });
-                        const demoAttendees = teachingExp.filter(d => d.状态 === '已体验' || d.状态 === '已报课').length;
-                        const demoEnrollments = teachingExp.filter(d => d.状态 === '已报课').length;
-
-                        // 2. 消课数据 (consumptionData)
-                        const teacherCons = consumptionData.filter(d => d.月份 === monthStr && d.姓名 === config.name && (!config.campus || d.校区 === config.campus));
-                        const regularHours = teacherCons.reduce((sum, d) => sum + Number(d.消课课时 || 0), 0);
-                        const oneOnOneAttendees = teacherCons.reduce((sum, d) => sum + Number(d.一对一人次 || 0), 0);
-                        
-                        // 优先从全局数据同步一对一金额
-                        const syncedOneOnOneAmount = teacherCons.reduce((sum, d) => sum + Number(d.一对一金额 || 0), 0);
-                        
-                        // 如果全局数据没有一对一金额，则尝试从以下来源获取：
-                        // 1. 本地加载的旧数据 (oldWorkData - 包含从服务器获取的数据)
-                        // 2. 预设的 JSON 数据 (presetWorkHistory)
-                        let oneOnOneAmount = syncedOneOnOneAmount;
-                        if (oneOnOneAmount === 0) {
-                            // 尝试从旧数据获取 (这里包含从服务器加载的数据)
-                            if (oldWorkData[id]) {
-                                oneOnOneAmount = Number(oldWorkData[id].oneOnOneAmount || 0);
-                                console.log(`${config.name} 一对一金额从旧数据恢复: ${oneOnOneAmount}`);
-                            }
-                            
-                            // 如果还是 0，且存在预设数据，从预设数据中获取
-                            if (oneOnOneAmount === 0 && window.presetWorkHistory && window.presetWorkHistory[monthStr]) {
-                                const monthPresets = window.presetWorkHistory[monthStr];
-                                if (monthPresets.length > 0) {
-                                    const latestPreset = [...monthPresets].sort((a, b) => b.timestamp - a.timestamp)[0];
-                                    if (latestPreset.data && latestPreset.data[id]) {
-                                        oneOnOneAmount = Number(latestPreset.data[id].oneOnOneAmount || 0);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        const attendance = teacherCons.reduce((sum, d) => sum + Number(d.出勤人次 || 0), 0);
-                        const absence = teacherCons.reduce((sum, d) => sum + Number(d.缺勤人次 || 0), 0);
-                        const leave = teacherCons.reduce((sum, d) => sum + Number(d.请假人次 || 0), 0);
-                        const makeup = teacherCons.reduce((sum, d) => sum + Number(d.缺课已补 || 0), 0);
-
-                        // 3. 业绩数据 (enrollmentData)
-                        const teacherEnr = enrollmentData.filter(d => {
-                            const dMonth = d.报课时间 ? d.报课时间.substring(0, 7) : '';
-                            return dMonth === monthStr && 
-                                   d.业绩归属人 === config.name && 
-                                   (!config.campus || d.所在校区 === config.campus);
-                        });
-                        const newSales = teacherEnr.filter(d => d.报课属性 === '新报' || d.报课属性 === '新签').reduce((sum, d) => sum + Number(d.实收金额 || 0), 0);
-                        const renewalSales = teacherEnr.filter(d => d.报课属性 === '续费').reduce((sum, d) => sum + Number(d.实收金额 || 0), 0);
-                        const totalSales = newSales + renewalSales;
-
-                        workData[id] = {
-                            id,
-                            name: config.name,
-                            isTeachingDisabled: config.isTeachingDisabled || false,
-                            isPartTime: config.isPartTime || false,
-                            demoInvites,
-                            demoAttendees,
-                            demoEnrollments,
-                            regularHours,
-                            oneOnOneAttendees,
-                            oneOnOneAmount,
-                            attendance,
-                            absence,
-                            leave,
-                            makeup,
-                            newSales,
-                            renewalSales,
-                            totalSales
-                        };
-                    });
-                } else {
-                    console.warn(`未找到 ${currentMonth.value} 的全局数据，跳过同步`);
                 }
 
                 if (workData) {

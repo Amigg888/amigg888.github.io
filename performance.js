@@ -302,9 +302,9 @@ createApp({
 
         // 教学老师绩效维度
         const teacherDimensions = [
-            { id: 'renewal', name: '学员续费率', weight: 30, status: 'pending', rules: `学员续费率得分\n基础分：30分\n核心规则：\n应续费人数 0人 (无续费任务)：保底分 10分；\n应续费人数 1人 (<3人)：未续费 8分，全额续费 18分；\n应续费人数 2人 (<3人)：未续费 6分，部分续费 (1人) 15分，全额续费 24分；\n应续费人数 >=3人 (正常规模)：\n>=100% 续费率：30分 [基础满分]；\n85%-99% 续费率：30分 [基础满分]；\n70%-84% 续费率：22分；\n50%-69% 续费率：15分；\n<50% 续费率：0分。\n超额加分：应续费人数 >=3人且续费率 >=100%时，加5分 (上限)。合计满分 35分。` },
+            { id: 'renewal', name: '学员续费率', weight: 30, status: 'pending', rules: `【满分30分，超额最高35分】\n\n一、应续费人数 0 人（无续费任务）\n   得分：10 分（保底）\n\n二、应续费人数 1 人\n   - 未续费：8 分\n   - 已续费：18 分\n\n三、应续费人数 2 人\n   - 续费 0 人：6 分\n   - 续费 1 人：15 分\n   - 续费 2 人：24 分\n\n四、应续费人数 3 人及以上（正常考核）\n   - 续费率低于 50%：0 分\n   - 续费率 50%-69%：15 分\n   - 续费率 70%-84%：22 分\n   - 续费率 85%-100%：30 分（满分）\n   - 续费率超过 100%：30 分 + 额外加分\n\n额外加分规则：续费率每超过 100% 的 10%，额外加 1 分，最高加 5 分。\n      提前续费计入实际续费人数，鼓励家长提前续费。\n\n举例：应续费 5 人\n      - 实际续费 5 人，续费率 100%，得分 30 分\n      - 实际续费 6 人（含 1 人提前续费），续费率 120%，得分 32 分\n      - 实际续费 8 人（含 3 人提前续费），续费率 160%，得分 35 分` },
             { id: 'attendance', name: '学员出勤率', weight: 25, status: 'pending', rules: `学员出勤率得分\n基础分：25分\n核心规则：\n>=95% 出勤率 (达成目标)：25分 [满分]；\n75%-94% 出勤率 (含75%, 不含95%)：按实际出勤率线性计分，每 1% 得 1.25分 (得分 = (实际出勤率 - 75%) * 100 * 1.25)；\n<75% 出勤率：0分。\n补充说明：无超额加分，合计满分 25分 (目标出勤率 95%，75%-95% 区间按每 1% 线性计分)。` },
-            { id: 'conversion', name: '体验课转化率', weight: 20, status: 'pending', rules: `体验课报转化率得分\n基础分：20分\n核心规则：\n体验课人数 = 0：保底得 5分；\n体验课人数 <3人：转化率 >60% 得 20分 [基础满分]，转化率处于 40%-59% 之间得 12分，转化率处于 20%-39% 之间得 6分，转化率 <20% 得 0分；\n体验课人数 >=3人：转化率 >60% 得 25分 (基础分 20分 + 加分项 5分，满分)，转化率处于 40%-59% 之间得 20分，转化率处于 20%-39% 之间得 10分，转化率 <20% 得 0分。\n补充说明：5分为额外加分项，仅体验课人数 >=3人且转化率 >60% 时可获得，合计满分 25分 (核心目标转化率 >60%，按体验课人数及转化率阶梯计分)。` },
+            { id: 'conversion', name: '体验课转化率', weight: 20, status: 'pending', rules: `体验课转化率得分\n基础分：25分\n核心规则：\n无体验课：保底10分\n体验1人：转化0人保底5分；有转化按转化率阶梯（无额外加分）\n体验2人：转化0人保底3分；有转化按转化率阶梯（无额外加分）\n体验>=3人：按转化率阶梯，转化率>60%加5分 → 最高25分 [满分]\n\n转化率阶梯（有转化时适用）：\n- 转化率 >=60%：20分\n- 转化率 40%-59%：15分\n- 转化率 20%-39%：10分\n- 转化率 <20%：0分\n\n补充说明：体验1-2人有转化时按转化率阶梯计分（无额外加分），体验>=3人转化率>60%可额外获5分加分。合计满分 25分。` },
             { id: 'followup', name: '学员定期沟通', weight: 10, status: 'pending', rules: `学员定期沟通得分\n基础分：10分\n核心规则：\n沟通次数 <= 9次：得 0分；\n10 <= 沟通次数 <= 14次：得 5分；\n15 <= 沟通次数 <= 19次：得 8分；\n沟通次数 >= 20次：得 10分 [满分]。\n补充说明：满分 10分，核心目标沟通次数 >=20次。无额外加分项。` },
             { id: 'punctuality', name: '考勤数据', weight: 10, status: 'pending', rules: `考勤得分\n基础分：10分\n核心规则：\n全勤（0迟到、0早退、0旷工）：10分 [满分]；\n普通迟到(≤30分钟)≤3次 且 无严重迟到/早退/旷工：8分（在允许范围内）；\n普通迟到4-5次 或 早退1-2次：5分；\n严重迟到(>30分钟,每次按2次计) 或 普通迟到+早退合计>5次 或 旷工1天：0分；\n旷工>1天：直接判定为"需帮扶"等级。\n补充说明：每月允许3次普通迟到(≤30分钟)，不影响满分。严重迟到每次按2次计算。` },
             { id: 'promotion', name: '朋友圈宣传', weight: 5, status: 'pending', rules: `朋友圈宣传得分\n基础分：5分\n核心规则：\n基准 24条/月，完成量 >=24 条得 5分 [满分]；\n不足则按 (实际量 / 24) * 5 线性计分。\n补充说明：仅考核朋友圈，小红书不参与绩效考核。` },
@@ -333,9 +333,9 @@ createApp({
         // 统一绩效等级标准（按分数划分，所有老师通用）
         const performanceStandards = [
             { level: '标杆', score: '≥120分', coefficient: '2.0', description: '表现卓越，超额完成目标' },
-            { level: '卓越', score: '100-119分', coefficient: '1.7', description: '表现优秀，达到预期目标' },
+            { level: '卓越', score: '100-119分', coefficient: '1.6', description: '表现优秀，达到预期目标' },
             { level: '优秀', score: '80-99分', coefficient: '1.4', description: '表现良好，基本完成目标' },
-            { level: '良好', score: '60-79分', coefficient: '1.0', description: '表现一般，需要继续努力' },
+            { level: '良好', score: '60-79分', coefficient: '1.0', description: '表现合格，需要继续努力' },
             { level: '待改进', score: '40-59分', coefficient: '0.8', description: '表现欠佳，需要改进提升' },
             { level: '需帮扶', score: '<40分或旷工>1天', coefficient: '0.6', description: '表现不足，需要重点帮扶' }
         ];
@@ -539,13 +539,31 @@ createApp({
                     steps.push(`应续费2人，实际续费${paidStudents}人，得分 ${score}分`);
                 } else {
                     const rate = paidStudents / dueStudents;
-                    if (rate >= 1) score = 30 + (dueStudents >= 3 ? 5 : 0);
-                    else if (rate >= 0.85) score = 30;
-                    else if (rate >= 0.70) score = 22;
-                    else if (rate >= 0.50) score = 15;
-                    else score = 0;
-                    steps.push(`续费率 ${(rate * 100).toFixed(1)}%，基础计分阶梯匹配得分 ${score}分`);
-                    if (rate >= 1 && dueStudents >= 3) steps.push('满足"应续费>=3人且续费率100%"，获得额外加分 5分');
+                    if (rate > 1) {
+                        // 续费率超过100%：30分 + 额外加分（每超10%加1分，上限5分）
+                        const extraRate = rate - 1;
+                        const extraBonus = Math.min(5, Math.floor(extraRate * 100 / 10) * 1);
+                        score = 30 + extraBonus;
+                        steps.push(`续费率 ${(rate * 100).toFixed(1)}%，超过100%`);
+                        steps.push(`基础满分 30分 + 超额奖励 ${extraBonus}分`);
+                        steps.push(`合计得分 ${score}分`);
+                    } else if (rate === 1) {
+                        // 续费率等于100%：30分满分
+                        score = 30;
+                        steps.push(`续费率 100.0%，达到满分 30分`);
+                    } else if (rate >= 0.85) {
+                        score = 30;
+                        steps.push(`续费率 ${(rate * 100).toFixed(1)}%，得分 30分`);
+                    } else if (rate >= 0.70) {
+                        score = 22;
+                        steps.push(`续费率 ${(rate * 100).toFixed(1)}%，得分 22分`);
+                    } else if (rate >= 0.50) {
+                        score = 15;
+                        steps.push(`续费率 ${(rate * 100).toFixed(1)}%，得分 15分`);
+                    } else {
+                        score = 0;
+                        steps.push(`续费率 ${(rate * 100).toFixed(1)}%，得分 0分`);
+                    }
                 }
             } else if (id === 'attendance') {
                 const { dueClasses, actualClasses } = data;
@@ -595,20 +613,56 @@ createApp({
                         }
                     }
                 } else {
-                    // 教学老师：个人转化率
-                    if (trialStudents < 3) {
-                        if (rate > 0.6) score = 20;
-                        else if (rate >= 0.4) score = 12;
-                        else if (rate >= 0.2) score = 6;
-                        else score = 0;
-                        steps.push(`体验人数 < 3，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
+                    // 教学老师：体验人数1-2人按转化率（无额外加分），体验0人保底，>=3人转化率>60%加5分
+                    let score = 0;
+                    
+                    if (trialStudents === 0) {
+                        score = 10;
+                        steps.push(`无体验课，保底分 ${score}分`);
+                    } else if (trialStudents === 1) {
+                        // 体验1人：按转化率，无额外加分
+                        if (enrolledStudents === 0) {
+                            score = 5;
+                            steps.push(`体验1人，转化0，保底分 ${score}分`);
+                        } else {
+                            // 有转化按转化率
+                            if (rate >= 0.6) score = 20;
+                            else if (rate >= 0.4) score = 15;
+                            else if (rate >= 0.2) score = 10;
+                            else score = 0;
+                            steps.push(`体验1人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分（按转化率，无额外加分）`);
+                        }
+                    } else if (trialStudents === 2) {
+                        // 体验2人：按转化率，无额外加分
+                        if (enrolledStudents === 0) {
+                            score = 3;
+                            steps.push(`体验2人，转化0，保底分 ${score}分`);
+                        } else {
+                            // 有转化按转化率
+                            if (rate >= 0.6) score = 20;
+                            else if (rate >= 0.4) score = 15;
+                            else if (rate >= 0.2) score = 10;
+                            else score = 0;
+                            steps.push(`体验2人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分（按转化率，无额外加分）`);
+                        }
                     } else {
-                        if (rate > 0.6) score = 25;
-                        else if (rate >= 0.4) score = 20;
-                        else if (rate >= 0.2) score = 10;
-                        else score = 0;
-                        steps.push(`体验人数 >= 3，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
-                        if (rate > 0.6) steps.push('转化率 > 60%，包含 5分额外加分');
+                        // 体验>=3人：按转化率，>60%加5分
+                        let baseScore = 0;
+                        if (rate >= 0.6) {
+                            baseScore = 20;
+                            score = 25;
+                            steps.push(`体验${trialStudents}人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
+                            steps.push(`转化率>60%，获得加分5分`);
+                        } else if (rate >= 0.4) {
+                            score = 15;
+                            steps.push(`体验${trialStudents}人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
+                        } else if (rate >= 0.2) {
+                            score = 10;
+                            steps.push(`体验${trialStudents}人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
+                        } else {
+                            score = 0;
+                            steps.push(`体验${trialStudents}人，转化${enrolledStudents}人，转化率 ${(rate * 100).toFixed(1)}%，得分 ${score}分`);
+                        }
                     }
                 }
             } else if (id === 'followup') {
@@ -824,10 +878,10 @@ createApp({
         const performanceLevel = computed(() => {
             // 如果旷工超过1天，直接判定为"需帮扶"
             if (hasSeriousPunctualityIssue.value) return '需帮扶';
-            
+
             const s = totalScore.value;
-            
-            // 统一按分数划分等级（所有老师通用）
+
+            // 统一按分数划分等级（所有老师通用）- 6档系数
             if (s >= 120) return '标杆';
             if (s >= 100) return '卓越';
             if (s >= 80) return '优秀';
@@ -839,12 +893,12 @@ createApp({
         const performanceCoefficient = computed(() => {
             // 如果旷工超过1天，系数为0.6
             if (hasSeriousPunctualityIssue.value) return '0.6';
-            
+
             const s = totalScore.value;
-            
-            // 统一按分数划分等级
+
+            // 统一按分数划分等级 - 6档系数
             if (s >= 120) return '2.0';
-            if (s >= 100) return '1.7';
+            if (s >= 100) return '1.6';
             if (s >= 80) return '1.4';
             if (s >= 60) return '1.0';
             if (s >= 40) return '0.8';
@@ -854,10 +908,10 @@ createApp({
         const levelColor = computed(() => {
             // 如果有严重考勤问题，显示红色
             if (hasSeriousPunctualityIssue.value) return 'text-red-600';
-            
+
             const s = totalScore.value;
-            
-            // 统一按分数划分等级
+
+            // 统一按分数划分等级 - 6档
             if (s >= 120) return 'text-purple-600';
             if (s >= 100) return 'text-blue-600';
             if (s >= 80) return 'text-emerald-600';

@@ -156,17 +156,48 @@ const initApp = () => {
                 }
 
                 if (!hasLoadedData) {
-                    // 3. Fallback to preset History (snapshots) - Third Priority
+                    // 3. Try to load from local work_data JSON file - Third Priority
+                    try {
+                        const response = await fetch(`work_data/data_${currentMonth.value}.json?t=${timestamp}`, {
+                            cache: 'no-cache'
+                        });
+                        if (response.ok) {
+                            const fileData = await response.json();
+                            if (fileData && Object.keys(fileData).length > 0) {
+                                Object.keys(fileData).forEach(key => {
+                                    if (tableData[key]) {
+                                        Object.assign(tableData[key], JSON.parse(JSON.stringify(fileData[key])));
+                                    } else {
+                                        tableData[key] = JSON.parse(JSON.stringify(fileData[key]));
+                                    }
+                                });
+                                updateSummaryRow('小花老师');
+                                console.log(`从本地文件加载了 ${currentMonth.value} 的工作数据`);
+                                hasLoadedData = true;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Local file load failed:', e);
+                    }
+                }
+
+                if (!hasLoadedData) {
+                    // 4. Fallback to preset History (snapshots) - Fourth Priority
                     try {
                         const historySource = window.presetWorkHistory || {};
                         const monthKey = currentMonth.value;
                         if (historySource[monthKey] && historySource[monthKey].length > 0) {
                             const preset = historySource[monthKey][0];
                             Object.keys(preset.data).forEach(key => {
+                                // 如果 tableData 中已有该key，合并数据；否则直接赋值
                                 if (tableData[key]) {
                                     Object.assign(tableData[key], JSON.parse(JSON.stringify(preset.data[key])));
+                                } else {
+                                    tableData[key] = JSON.parse(JSON.stringify(preset.data[key]));
                                 }
                             });
+                            // 更新小花老师汇总行
+                            updateSummaryRow('小花老师');
                             console.log(`加载了 ${monthKey} 的预设历史数据`);
                             hasLoadedData = true;
                         }

@@ -273,6 +273,105 @@ def save_work_history():
     
     return jsonify({"status": "success"})
 
+# 工资数据保存接口
+@app.route('/salary-data', methods=['GET'])
+def get_salary_data():
+    month = request.args.get('month')
+    if not month:
+        return jsonify({"status": "error", "message": "Month is required"}), 400
+    
+    file_path = f'salary_data/{month}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify({})
+
+@app.route('/salary-data', methods=['POST'])
+def save_salary_data():
+    data = request.json
+    month = data.get('month')
+    salary_data = data.get('data')
+    
+    if not month or not salary_data:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    
+    if not os.path.exists('salary_data'):
+        os.makedirs('salary_data')
+    
+    file_path = f'salary_data/{month}.json'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(salary_data, f, ensure_ascii=False, indent=4)
+    
+    username = session.get('username', 'anonymous')
+    log_action(username, "SAVE_SALARY_DATA", f"保存了 {month} 的工资数据")
+    return jsonify({"status": "success"})
+
+# 垫付记录保存接口
+@app.route('/advance-records', methods=['GET'])
+def get_advance_records():
+    month = request.args.get('month')
+    if not month:
+        return jsonify({"status": "error", "message": "Month is required"}), 400
+    
+    file_path = f'finance_data/advance_{month}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify([])
+
+@app.route('/advance-records', methods=['POST'])
+def save_advance_records():
+    data = request.json
+    month = data.get('month')
+    records = data.get('records')
+    
+    if not month or records is None:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    
+    if not os.path.exists('finance_data'):
+        os.makedirs('finance_data')
+    
+    file_path = f'finance_data/advance_{month}.json'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(records, f, ensure_ascii=False, indent=4)
+    
+    username = session.get('username', 'anonymous')
+    log_action(username, "SAVE_ADVANCE", f"保存了 {month} 的垫付记录")
+    return jsonify({"status": "success"})
+
+# 报销记录保存接口
+@app.route('/reimbursement-records', methods=['GET'])
+def get_reimbursement_records():
+    month = request.args.get('month')
+    if not month:
+        return jsonify({"status": "error", "message": "Month is required"}), 400
+    
+    file_path = f'finance_data/reimbursement_{month}.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify([])
+
+@app.route('/reimbursement-records', methods=['POST'])
+def save_reimbursement_records():
+    data = request.json
+    month = data.get('month')
+    records = data.get('records')
+    
+    if not month or records is None:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    
+    if not os.path.exists('finance_data'):
+        os.makedirs('finance_data')
+    
+    file_path = f'finance_data/reimbursement_{month}.json'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(records, f, ensure_ascii=False, indent=4)
+    
+    username = session.get('username', 'anonymous')
+    log_action(username, "SAVE_REIMBURSEMENT", f"保存了 {month} 的报销记录")
+    return jsonify({"status": "success"})
+
 if __name__ == '__main__':
     # 在 3001 端口运行，监听所有接口以提高兼容性
     app.run(host='0.0.0.0', port=3001)
